@@ -8,39 +8,41 @@ import Types
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Array
-import System.Random hiding (next)
-import Prelude hiding (exp,print)
+import Data.List
+import Data.Maybe
+import Prelude hiding (exp,id)
 import qualified Prelude as P
+import System.IO
+import System.Random hiding (next)
 
 -- Currently used characters:
--- cBCIKoOSUWYTF][+-*`ZLlGg0123456789@<>^v?$~.,;#"
+-- "#$*+,-.0123456789:;<>?@BCFGIKLOSTUWY[]^`cglov~
 
 
-print :: Show a => a -> LC ()
-print =  liftIO . P.print
+-- | Evaluate a Lambdoid program
+evalProg :: Flags -> [Exp] -> String -> IO ()
+evalProg fs as src = do
+  out <- (^. exp) <$> execProg initState fs go
 
-putMaybe :: Pretty a => Maybe a -> LC ()
-putMaybe (Just a) = liftIO . P.putStr $ pretty a
-putMaybe Nothing  = return ()
+  let showNum  = fmap (("Church numeral: "++) . show) . toIntegr
+      showBool = fmap (("Boolean: "++) . show) . toBool
+      vals = case catMaybes $ map ($out) [showNum, showBool] of
+               [] -> ""
+               vs -> "\t[" ++ intercalate "; " vs ++ "]"
 
+  when (not $ fs ^. quiet) $
+    hPutStrLn stderr $ "\nFinal expression: " ++ show out ++ vals
 
--- Evaluate a Lambdoid program
-evalProg :: Bool -> [String] -> String -> IO () --Env
-evalProg verbose args' src = P.print =<< runProg initState go -- TODO: parse args'
+  where initState = Env (parseSrc src) as id (0,0) R
 
-  where initState = Env (parse src) [] (Lam $ Var 1) (0,0) R
-
-        parse str = array ((0,0),(m,n)) $ concat
-          [ [((i,j),c) | (j,c) <- enum line] | (i,line) <- zip [0..] rows ]
-          where rows = lines str
-                enum x = zip [0..n] $ x ++ repeat ' '
-                m = length rows - 1
-                n = maximum (length <$> rows) - 1
-
+        -- Loop the program until '@' is reached
         go = getCmd >>= \case '@' -> return ()
-                              c   -> evalCmd c >> step >> go
+                              c   -> do evalCmd c
+                                        exp %= simplify
+                                        step >> go
 
 
+-- | Decide what to do depending on the just read character
 evalCmd :: Char -> LC ()
 evalCmd c = case c of
   -- Modify the direction pointer
@@ -57,6 +59,8 @@ evalCmd c = case c of
     parseInput <$> liftIO getLine >>= \case
       Left _  -> return ()
       Right e -> appExp e
+  ':' -> -- Output the current lambda term
+    Just <$> use exp >>= putMaybe
   ';' -> -- Output value as Bool
     toBool <$> use exp >>= putMaybe
   ',' -> -- Output value as ASCII char
@@ -66,9 +70,11 @@ evalCmd c = case c of
   '#' -> -- Jump instruction
     step
   'c' -> -- Replace current expression with id
-    exp .= Lam (Var 1)
+    exp .= id
+  'l' -> -- Print newline
+    putMaybe $ Just "\n"
   '"' -> -- Accumulate number & apply it
-    accumNumber >>= appExp
+    step >> accumNumber >>= appExp
   _ | c `elem` "0123456789" -> -- Apply a number literal
         appExp . number $ toNumber c
     | c `elem` map fst opTable -> -- Apply an expression from opTable
@@ -85,10 +91,11 @@ evalCmd c = case c of
           | otherwise = error $ "command " ++ show c ++ " not implemented"
 
         accumNumber :: LC Exp
-        accumNumber = number . foldl ((+).(10*)) 0 <$> go
+        accumNumber = number . foldl ((+).(10*)) 0 . filter (>0) <$> go
           where go = getCmd >>= \case
-                       '"' -> return []
-                       c   -> step >> (toNumber c :) <$> go
+                       '"'                  -> return []
+                       c | c `elem` "<>^v@" -> evalCmd c >> (-1:) <$> go
+                         | otherwise        -> step >> (toNumber c :) <$> go
 
         toNumber :: Char -> Integer
         toNumber c
@@ -96,13 +103,16 @@ evalCmd c = case c of
           | otherwise = fromIntegral $ fromEnum c
 
 
+-- | Get the current command that gets executed
 getCmd :: LC Char
 getCmd = do
-  e' <- get
-  print $ show (e' ^. pos) ++ " [" ++ show (e' ^. dir) ++ "]"
-  return $ (e' ^. prog) ! (e' ^. pos)
+  env <- get
+  whenM (view verbose) $
+    putErrLn $ show (env ^. pos) ++ " [" ++ show (env ^. dir) ++ "]"
+  return $ (env ^. prog) ! (env ^. pos)
 
 
+-- | Step the program; move command pointer in the current direction
 step :: LC ()
 step = do e  <- get
           pos %= next (snd . bounds $ e ^. prog) (dxdy $ e ^. dir)
@@ -113,3 +123,22 @@ step = do e  <- get
         dxdy R = ( 0, 1)
         dxdy U = (-1, 0)
         dxdy D = ( 1, 0)
+
+
+id :: Exp
+id = Lam $ Var 1
+
+whenM :: LC Bool -> LC () -> LC ()
+whenM b f = b >>= flip when f
+
+putMaybe :: Pretty a => Maybe a -> LC ()
+putMaybe (Just a) = do whenM (view clear) (exp .= id)
+                       whenM (view exit) $ do
+                         pos  .= (0,0)
+                         prog .= array ((0,0),(0,0)) [((0,0),'@')]
+                       liftIO . P.putStr $ pretty a
+                       liftIO $ hFlush stdout
+putMaybe Nothing = putErrLn "error: type mismatch"
+
+putErrLn :: String -> LC ()
+putErrLn = liftIO . hPutStrLn stderr

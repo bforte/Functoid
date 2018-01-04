@@ -1,36 +1,52 @@
 
-module Parser where
+module Parser (parseSrc, parseInput) where
 
 import LambdaCalc
+import Types
 
+import Data.Array
+import Data.List
 import Text.Parsec
+import Text.Parsec.Expr
+
+
+-- | Transform the source to an Array (pad shorter rows with spaces)
+parseSrc :: String -> Prog
+parseSrc str = array ((0,0),(m,n)) $ concat
+  [ [((i,j),c) | (j,c) <- enum line] | (i,line) <- zip [0..] rows ]
+  where rows = lines str
+        enum x = zip [0..n] $ x ++ repeat ' '
+        m = length rows - 1
+        n = maximum (length <$> rows) - 1
 
 
 type Parser = Parsec String ()
 
+-- | Parse a string to lambda expression
 parseInput :: String -> Either ParseError Exp
-parseInput = parse inputP "input"
+parseInput = parse inputP "input" . trim
+  where trim = dropWhile (==' ') . dropWhileEnd (==' ')
 
+-- | Parse DeBuijn style lambda expressions; numbers are treated as Church numerals
 inputP :: Parser Exp
-inputP = intP <|> try charP -- <|> expP)
-  where intP  = spaced (number . read <$> many1 digit) <* eof
-        charP = number . fromIntegral . fromEnum <$> anyChar <* eof
-        --expP  = parens expP' <|> expP'
-        --expP' = varP <|> appP <|> lamP
+inputP = expP <* eof
+  where expP  = spaced $ buildExpressionParser [[Infix appP AssocLeft]] atomP
+        atomP =  varP
+             <|> lamP
+             <|> numP
+             <|> parens expP
+        appP  = many1 space *> return App
 
-        --varP = spaced $ Var . read <$> (char 'x' *> many1 digit)
-        --lamP = do spaced $ choice (string <$> lam)
-        --          Lam <$> spaced expP
-        --appP = do a <- spaces *> expP
-        --          many1 space
-        --          b <- expP <* spaces
-        --          return $ a .$ b
+        varP = Var <$> (char 'x' *> intP)
+        lamP = Lam <$> (oneOf "λ\\" *> atomP)
+        numP = number <$> intP
 
-        --lam = ["\\","λ"]
-        --to  = ["->","."]
 
-        --parens :: Parser a -> Parser a
-        --parens p = between (char '(') (char ')') (spaced p)
+intP :: Parser Integer
+intP = read <$> many1 digit
 
-        spaced :: Parser a -> Parser a
-        spaced p = spaces *> p <* spaces
+parens :: Parser a -> Parser a
+parens p = between (char '(') (char ')') (spaced p)
+
+spaced :: Parser a -> Parser a
+spaced p = spaces *> p <* spaces

@@ -1,7 +1,7 @@
 name:                Lambdoid
 version:             0.1.0.0
-synopsis:            2D-language based on lambda calculus; inspired by Befunge
-homepage:            https://github.com/bforte/Lambdoid
+synopsis:            Lambdoid is a 2-dimensional fungeoid based on lambda calculus.
+homepage:            https://github.com/bforte/Lambdoid#README.md
 license:             BSD3
 license-file:        LICENSE
 category:            Language
@@ -9,7 +9,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 extra-source-files:  README.md
 
-executable Lambdoid
+executable lambdoid
   hs-source-dirs:      src
   main-is:             Main.hs
   other-modules:       Eval
@@ -25,4 +25,3 @@ executable Lambdoid
                      , mtl
                      , parsec
                      , random
-                     , template-haskell
