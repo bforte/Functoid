@@ -1,14 +1,15 @@
 {-# LANGUAGE FlexibleInstances #-}
 
--- | Lambda terms based on DeBruijn notation (https://en.wikipedia.org/wiki/De_Bruijn_index)
+-- | Lambda terms based on DeBruijn notation; see here:
+--    - https://en.wikipedia.org/wiki/De_Bruijn_index
 
 module LambdaCalc
   ( Exp(..), Pretty, pretty, (.$)
   , simplify, number, opTable
-  , toBool, toChar, toIntegr
+  , toBool, toChar, toNum
   ) where
 
-import Prelude hiding (pred,succ)
+import Prelude hiding (pred,succ,and,or,not)
 
 
 -- | Exp type for lambda calculus terms
@@ -49,6 +50,9 @@ instance Pretty Char where
   pretty c = [c]
 instance Pretty String where
   pretty = id
+instance Pretty a => Pretty (Maybe a) where
+  pretty (Just a) = pretty a
+  pretty Nothing  = ""
 
 
 -- | Is the current expression a "boolean"
@@ -58,20 +62,19 @@ toBool x
   | x == false = Just False
   | otherwise  = Nothing
 
-
 -- | Pattern match Church numerals
-toIntegr :: Exp -> Maybe Integer
-toIntegr (Lam (Lam (Var 1))) = Just 0
-toIntegr (Lam (Lam (App (Var 2) x))) = go x
+toNum :: Exp -> Maybe Integer
+toNum = toNum' . simplify
+toNum' (Lam (Lam (Var 1))) = Just 0
+toNum' (Lam (Lam (App (Var 2) x))) = go x
   where go (Var 1) = Just 1
         go (App (Var 2) x) = (1+) <$> go x
         go _ = Nothing
-toIntegr _ = Nothing
-
+toNum' _ = Nothing
 
 -- | Use the Church number (if any) & convert to ASCII
 toChar :: Exp -> Maybe Char
-toChar x = toEnum . (`mod` 128) . fromIntegral <$> toIntegr x
+toChar x = toEnum . (`mod` 128) . fromIntegral <$> toNum x
 
 
 -- | Reduce Lambda terms in normal-order until the term doesn't simplify further
@@ -112,18 +115,16 @@ u  = Lam (Lam (Var 1 .$ (Var 2 .$ Var 2 .$ Var 1)))
 w  = Lam (Lam $ Var 2 .$ Var 1 .$ Var 1)
 y  = Lam (Lam (Var 2 .$ (Var 1 .$ Var 1)) .$ Lam (Var 2 .$ (Var 1 .$ Var 1)))
 
---tests = and
---  [ b == (s .$ (k .$ s)) .$ k
---  , c == s .$ (s .$ (k .$ (s .$ (k .$ s) .$ k)) .$ s) .$ (k .$ k)
---  , w == s .$ s .$ (s .$ k)
---  , i == w .$ k
---  , s == b .$ (b .$ (b .$ w) .$ c) .$ (b .$ b)
---  , s == b .$ (b .$ w) .$ (b .$ b .$ c)
---  ]
 
 -- | Boolean logic
-true   = k
+true   = Lam (Lam $ Var 2)
 false  = Lam (Lam $ Var 1)
+
+and = Lam (Lam $ Var 2 .$ Var 1 .$ Var 2)
+or  = Lam (Lam $ Var 2 .$ Var 2 .$ Var 1)
+xor = Lam (Lam (Var 2 .$ (Var 1 .$ (Lam $ Lam $ Var 1) .$ (Lam $ Lam $ Var 2)) .$ Var 1))
+not = Lam $ Var 1 .$ (Lam $ Lam $ Var 1) .$ (Lam $ Lam $ Var 2)
+
 
 -- | Arithmetic (Church numerals)
 number :: Integer -> Exp
@@ -140,15 +141,16 @@ leq = Lam (Lam (App (App (App (App (Var 1) (Lam (Lam (Lam (App (App (App (Var 3)
 le = Lam (Lam (App (App (App (App (Var 1) (Lam (Lam (Lam (App (App (App (Var 3) (Lam (Lam (App (Var 1) (App (Var 2) (Var 4)))))) (Lam (Var 2))) (Lam (Var 1))))))) (Lam (Lam (App (Var 2) (App (App (Var 4) (Var 2)) (Var 1)))))) (Lam (Lam (Lam (Var 1))))) (Lam (Lam (Var 2)))))
 geq = Lam (Lam (App (App (App (App (Var 2) (Lam (Lam (Lam (App (App (App (Var 3) (Lam (Lam (App (Var 1) (App (Var 2) (Var 4)))))) (Lam (Var 2))) (Lam (Var 1))))))) (Var 1)) (Lam (Lam (Lam (Var 1))))) (Lam (Lam (Var 2)))))
 ge = Lam (Lam (App (App (App (App (Var 2) (Lam (Lam (Lam (App (App (App (Var 3) (Lam (Lam (App (Var 1) (App (Var 2) (Var 4)))))) (Lam (Var 2))) (Lam (Var 1))))))) (Lam (Lam (App (Var 2) (App (App (Var 3) (Var 2)) (Var 1)))))) (Lam (Lam (Lam (Var 1))))) (Lam (Lam (Var 2)))))
-iszero = Lam $ Var 1 .$ (Lam (Lam (Lam $ Var 1))) .$ Lam (Lam $ Var 2)
+iszero = Lam $ Var 1 .$ Lam (Lam (Lam $ Var 1)) .$ Lam (Lam $ Var 2)
+eqq = simplify $ Lam (Lam $ and .$ (geq .$ Var 1 .$ Var 2) .$ (leq .$ Var 1 .$ Var 2))
 
 
 -- | Used to convert from a character in the source to Exps
 opTable :: [(Char,Exp)]
 opTable =
   [ ('B', b), ('C', c), ('I', i), ('K', k), ('o', _o), ('O', o), ('S', s), ('U', u), ('W', w), ('Y', y)
-  , ('T', true), ('F', false)
+  , ('T', true), ('F', false), ('_',not), ('A',and), ('V',or), ('X',xor)
   , (']', succ), ('[', pred)
   , ('+', plus), ('-', sub), ('*', mult), ('`', pow)
-  , ('L', leq), ('l', le), ('G', geq), ('g', ge), ('Z', iszero)
+  , ('=', eqq), ('L', leq), ('l', le), ('G', geq), ('g', ge), ('Z', iszero)
   ]

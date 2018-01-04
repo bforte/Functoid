@@ -16,7 +16,7 @@ import System.IO
 import System.Random hiding (next)
 
 -- Currently used characters:
--- "#$*+,-.0123456789:;<>?@BCFGIKLOSTUWY[]^`cglov~
+-- "#$*+,-.0123456789:;<=>?@ABCFGIKLOSTUVWXY[]^_`cglov~
 
 
 -- | Evaluate a Lambdoid program
@@ -24,13 +24,13 @@ evalProg :: Flags -> [Exp] -> String -> IO ()
 evalProg fs as src = do
   out <- (^. exp) <$> execProg initState fs go
 
-  let showNum  = fmap (("Church numeral: "++) . show) . toIntegr
+  let showNum  = fmap (("Church numeral: "++) . show) . toNum
       showBool = fmap (("Boolean: "++) . show) . toBool
-      vals = case catMaybes $ map ($out) [showNum, showBool] of
+      vals = case mapMaybe ($out) [showNum, showBool] of
                [] -> ""
                vs -> "\t[" ++ intercalate "; " vs ++ "]"
 
-  when (not $ fs ^. quiet) $
+  unless (fs ^. quiet) $
     hPutStrLn stderr $ "\nFinal expression: " ++ show out ++ vals
 
   where initState = Env (parseSrc src) as id (0,0) R
@@ -38,7 +38,6 @@ evalProg fs as src = do
         -- Loop the program until '@' is reached
         go = getCmd >>= \case '@' -> return ()
                               c   -> do evalCmd c
-                                        exp %= simplify
                                         step >> go
 
 
@@ -60,19 +59,19 @@ evalCmd c = case c of
       Left _  -> return ()
       Right e -> appExp e
   ':' -> -- Output the current lambda term
-    Just <$> use exp >>= putMaybe
+    use exp >>= putPretty
   ';' -> -- Output value as Bool
-    toBool <$> use exp >>= putMaybe
+    toBool <$> use exp >>= putPretty
   ',' -> -- Output value as ASCII char
-    toChar <$> use exp >>= putMaybe
-  '.' -> -- Output value as Int
-    toIntegr <$> use exp >>= putMaybe
+    toChar <$> use exp >>= putPretty
+  '.' -> -- Output value as Number
+    toNum <$> use exp >>= putPretty
   '#' -> -- Jump instruction
     step
   'c' -> -- Replace current expression with id
     exp .= id
   'l' -> -- Print newline
-    putMaybe $ Just "\n"
+    putPretty "\n"
   '"' -> -- Accumulate number & apply it
     step >> accumNumber >>= appExp
   _ | c `elem` "0123456789" -> -- Apply a number literal
@@ -83,7 +82,7 @@ evalCmd c = case c of
         return ()
 
   where appExp :: Exp -> LC ()
-        appExp e = exp %= simplify . (.$ e)
+        appExp e = exp %= (.$ e)
 
         fromChar :: Char -> Exp
         fromChar c
@@ -131,14 +130,15 @@ id = Lam $ Var 1
 whenM :: LC Bool -> LC () -> LC ()
 whenM b f = b >>= flip when f
 
-putMaybe :: Pretty a => Maybe a -> LC ()
-putMaybe (Just a) = do whenM (view clear) (exp .= id)
-                       whenM (view exit) $ do
-                         pos  .= (0,0)
-                         prog .= array ((0,0),(0,0)) [((0,0),'@')]
-                       liftIO . P.putStr $ pretty a
-                       liftIO $ hFlush stdout
-putMaybe Nothing = putErrLn "error: type mismatch"
+putPretty :: Pretty a => a -> LC ()
+putPretty a = do whenM (view clear) (exp .= id)
+                 whenM (view exit) $ do
+                   pos  .= (0,0)
+                   prog .= array ((0,0),(0,0)) [((0,0),'@')]
+                 case pretty a of
+                   "" -> whenM (not <$> view quiet) $
+                           putErrLn "error: type mismatch"
+                   x  -> liftIO $ P.putStr x
 
 putErrLn :: String -> LC ()
 putErrLn = liftIO . hPutStrLn stderr

@@ -2,6 +2,7 @@
 
 Lambdoid is a 2-dimensional fungeoid based on lambda calculus.
 
+
 ## Introduction
 
 There's no reason to give a formal definition for the lambda calculus here,
@@ -12,16 +13,10 @@ you should probably check it out (for example [here][DB-wiki]) because this expl
 will make use of it.
 
 Internally `lambdoid` has no types to represent booleans, numbers, characters
-or even strings. Any expression in is defined by the following recursive datatype:
-
-```haskell
-data Exp = Var Integer
-         | Lam Exp
-         | App Exp Exp
-```
-
-Please note that `Integer` has no maximum size which makes `lambdoid` Turing-complete.
-From this definition the built-in numbers are defined like this:
+or even strings. Any expression in is defined in terms of lambda terms, please refer
+to the *Commands* section for how logic is defined. Characters are just another
+representation of integers (modulo 128 and converted to ASCII), numbers are defined
+as Church numerals:
 
 - Zero is: *λλx1*
 - The successor function is: λλλ(x2 (x3 x2 x1))
@@ -45,8 +40,10 @@ you notice the pattern that *N* is *λλ(x2 (…(x2 x1)…))* with *x2* repeated
 exactly *N* times.
 
 All built-ins that work with numbers in `lambdoid` work like this and this
-is the reason that there are no negative numbers by default. Although you
-can simply define them how you want and work with your own definition.
+is the reason that programs often are quite slow, it also implies that there
+are no negative numbers by default. Although you can simply define them how
+you want and work with your own definitions.
+
 
 ## The first program
 
@@ -91,6 +88,7 @@ Final expression: λλλ(x2 (x3 x2 x1))
 It's not surprising that this returns the successor function, since the
 only functions that get applied are `+` and `$` (which evaluates to `1`).
 
+
 ## Hello, World!
 
 You might ask how you would use numbers larger than `9` without doing a
@@ -110,6 +108,7 @@ of this ability to evaluate multiple functions sequentially:
 $ lambdoid -qe '"H","e","l","l","o",","," ","W","o","r","l","d","!",@'
 Hello, World!
 ```
+
 
 ## Lambda Calculus REPL
 
@@ -176,9 +175,9 @@ to the current function:
 |    `$`       | pop & apply argument                 |              |
 |    `~`       | ask user for input & apply *         |              |
 |    `:`       | output value current lambda term     |              |
-|    `;`       | output value as Bool                 |              |
+|    `;`       | output value as Boolean              |              |
 |    `,`       | output value as ASCII (mod 128) char |              |
-|    `.`       | output value as Int                  |              |
+|    `.`       | output value as number               |              |
 |    `#`       | jump instruction                     |              |
 |    `"`       | number delimiter                     |              |
 |    `c`       | replace current expression with id   | set to *λx1* |
@@ -197,6 +196,10 @@ to the current function:
 |              |                                      |              |
 |    `T`       | true                                 | *λλx2*       |
 |    `F`       | false                                | *λλx1*       |
+|    `_`       | not                                  | *λ(x1 λλx1 λλx2)* |
+|    `A`       | and                                  | *λλ(x2 x1 x2)* |
+|    `V`       | or                                   | *λλ(x2 x2 x1)* |
+|    `X`       | xor                                  | *λλ(x2 (x1 λλx1 λλx2) x1)* |
 |              |                                      |              |
 |   `0…9`      | Church numerals                      | *λλx1*,*λλ(x2 x1)*,…,λλ(x2 (…(x2 x1)…))|
 |    `]`       | succ                                 | *λλλ(x2 (x3 x2 x1))* |
@@ -205,6 +208,7 @@ to the current function:
 |    `-`       | sub **                                | *λλ(x1 λλλ(x3 λλ(x1 (x2 x4)) λx2 λx1) x2)* |
 |    `*`       | mult                                 | *λλλ(x3 (x2 x1))* |
 |<code>`</code>| pow ***                               | *λλ(x1 x2)*    |
+|    `=`       | equality (for Church numerals)       | *λλ(x1 λλλ(x3 λλ(x1 (x2 x4)) λx2 λx1) x2 λλλx1 λλx2 (x2 λλλ(x3 λλ(x1 (x2 x4)) λx2 λx1) x1 λλλx1 λλx2) (x1 λλλ(x3 λλ(x1 (x2 x4)) λx2 λx1) x2 λλλx1 λλx2))* |
 |    `L`       | leq                                  | *λλ(x1 λλλ(x3 λλ(x1 (x2 x4)) λx2 λx1) x2 λλλx1 λλx2)* |
 |    `l`       | le                                   | *λλ(x1 λλλ(x3 λλ(x1 (x2 x4)) λx2 λx1) λλ(x2 (x4 x2 x1)) λλλx1 λλx2)* |
 |    `G`       | geq                                  | *λλ(x2 λλλ(x3 λλ(x1 (x2 x4)) λx2 λx1) x1 λλλx1 λλx2)* |
@@ -216,6 +220,7 @@ to the current function:
 <sub>** *sub a b* with *a < b* will result in *0* </sub>
 
 <sub>*** *pow a b* only works for *a,b > 0* </sub>
+
 
 ## Installation
 

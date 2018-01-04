@@ -12,9 +12,11 @@ import System.Environment
 
 main :: IO ()
 main = getOpt Permute options <$> getArgs >>= \case
-  (args,src:cs,[]) -> case mapM parseInput cs of
-                        Left err -> die $ show err
-                        Right as -> evalArgs (readArgs args) src as
+  (args,src:cs,[]) -> do hSetBuffering stdout NoBuffering
+                         hSetBuffering stderr NoBuffering
+                         case mapM parseInput cs of
+                           Left err -> die $ show err
+                           Right as -> evalArgs (readArgs args) src as
   (_,[],_)  -> die "you need to supply a file name"
   (_,_,err) -> die $ concat err
 
