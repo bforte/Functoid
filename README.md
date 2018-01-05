@@ -76,7 +76,7 @@ Of course you can take user-input as well: When the interpreter is invoked all
 command-line arguments get parsed (you can input either lambda-terms or
 shortcuts for numbers) and pushed to a stack. The command `$` will pop one
 argument and apply it to the current function (note how `v>^<` alter the flow
-of the program):
+of the program unconditionally):
 
 ```
 $ cat test.f
@@ -87,7 +87,7 @@ Final expression: λλλ(x2 (x3 x2 x1))
 ```
 
 It's not surprising that this returns the successor function, since the only
-functions that get applied are `+` and `$` (which evaluates to `1`).
+functions that get applied are `+` and `$` (which evaluates to *1*).
 
 
 ## Hello, World!
@@ -171,19 +171,20 @@ Final expression: λx1 (^C
 ```
 
 It won't terminate and you'll have to kill it with <kbd>Ctrl</kbd>+<kbd>C</kbd>
-(that's the `^C` you can see). As we know `c` will override the current
+(that's the `^C` you can see). The character `r` will override the current
 expression with the identity function, now let's try the following:
 
 ```
-functoid -e "Oc@"
+functoid -e "Or@"
 
 Final expression: λx1
 ```
 
 This time it terminates, that's because `functoid` only ever evaluates stuff if
-it really needs to. In fact try running it with `-q` flag and see what happens.
-If you don't like this behaviour however you can force evaluation at each step
-with the `-f` flag - meaning `functoid -qfe "Of@"` wont' terminate.
+it really needs to. In fact try running the first version with the `-q` flag
+and see what happens. However if you don't like this behaviour you can force
+evaluation at each step with the `-f` flag - meaning `functoid -qfe "Or@"`
+wont' terminate.
 
 
 <!-- ## Control flow
@@ -217,6 +218,8 @@ to the current function:
 |    `^`       | set direction up                     |              |
 |    `v`       | set direction down                   |              |
 |    `?`       | set random direction                 |              |
+|    `_`       | if term is 0 -> set direction right; else left | |
+|    `\|`       | if term is 0 -> set direction down; else up    | |
 |    `$`       | pop & apply argument                 |              |
 |    `~`       | ask user for input & apply *         |              |
 |    `:`       | output value current lambda term     |              |
@@ -227,8 +230,8 @@ to the current function:
 |    `#`       | jump instruction                     |              |
 |    `"`       | number delimiter                     |              |
 |    `f`       | force evaluation                     |              |
-|    `c`       | replace current expression with id   | set to *λx1* |
-|    `%`       | *modify x y z* -> set *(x,y)* to *z* | *λλλ[x3,x2,x1]* |
+|    `r`       | replace current expression with id   | set to *λx1* |
+|    `%`       | *modify x3 x2 x1* -> set *(x3,x2)* to *x1* | *λλλ[x3,x2,x1]* |
 |              |                                      |              |
 |    `B`       | *B*-combinator                       | *λλλ(x3 (x2 x1))* |
 |    `C`       | *C*-combinator                       | *λλλ(x3 x1 x2)* |
@@ -243,8 +246,8 @@ to the current function:
 |              |                                      |              |
 |    `T`       | true                                 | *λλx2*       |
 |    `F`       | false                                | *λλx1*       |
-|    `?`       | if *z* then *x* else *y*             | *λλλ(x1 x3 x2)* |
-|    `_`       | not                                  | *λ(x1 λλx1 λλx2)* |
+|    `i`       | if *x1* then *x3* else *x2*          | *λλλ(x1 x3 x2)* |
+|    `n`       | not                                  | *λ(x1 λλx1 λλx2)* |
 |    `A`       | and                                  | *λλ(x2 x1 x2)* |
 |    `V`       | or                                   | *λλ(x2 x2 x1)* |
 |    `X`       | xor                                  | *λλ(x2 (x1 λλx1 λλx2) x1)* |

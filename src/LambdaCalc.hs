@@ -15,10 +15,15 @@ import Prelude hiding (pred,succ,and,or,not)
 -- | Exp type for lambda calculus terms
 data Exp = Var Integer
          | Lam Exp
-         | Tri Exp Exp Exp  -- Triple (x,y,newchar) for modifying the source
+         | Tri Exp Exp Exp  -- Triple (x,y,c) for modifying the source
          | App Exp Exp
 
 (.$) = App
+
+infixr 8 $.
+($.) = App
+
+λ = Lam
 
 instance Show Exp where
   show (Var a) = "x" ++ show a
@@ -83,7 +88,7 @@ toChar x = toEnum . (`mod` 128) . fromIntegral <$> toNum x
 -- | Reduce Lambda terms in normal-order until the term doesn't simplify further
 simplify :: Exp -> Exp
 simplify e
-  | eq e' e   = e            -- Don't change to (==)
+  | eq e' e   = e
   | otherwise = simplify e'
   where e' = simplify' e
         simplify' (Lam a) = Lam $ simplify' a
@@ -146,22 +151,22 @@ succ = Lam (Lam (Lam (Var 2 .$ (Var 3 .$ Var 2 .$ Var 1))))
 pred = Lam (Lam (Lam (Var 3 .$ Lam (Lam (Var 1 .$ (Var 2 .$ Var 4))) .$ Lam (Var 2) .$ Lam (Var 1))))
 plus = Lam (Lam (Lam (Lam (Var 4 .$ Var 2 .$ (Var 3 .$ Var 2 .$ Var 1)))))
 sub  = Lam (Lam (Var 1 .$ pred .$ Var 2))
-
 mult = Lam (Lam (Lam (Var 3 .$ (Var 2 .$ Var 1))))
 pow = Lam (Lam (Var 1 .$ Var 2))
+
+iszero = Lam $ Var 1 .$ Lam (Lam (Lam $ Var 1)) .$ Lam (Lam $ Var 2)
+eqq = simplify $ Lam (Lam $ and .$ (geq .$ Var 1 .$ Var 2) .$ (leq .$ Var 1 .$ Var 2))
 leq = Lam (Lam (App (App (App (App (Var 1) (Lam (Lam (Lam (App (App (App (Var 3) (Lam (Lam (App (Var 1) (App (Var 2) (Var 4)))))) (Lam (Var 2))) (Lam (Var 1))))))) (Var 2)) (Lam (Lam (Lam (Var 1))))) (Lam (Lam (Var 2)))))
 le = Lam (Lam (App (App (App (App (Var 1) (Lam (Lam (Lam (App (App (App (Var 3) (Lam (Lam (App (Var 1) (App (Var 2) (Var 4)))))) (Lam (Var 2))) (Lam (Var 1))))))) (Lam (Lam (App (Var 2) (App (App (Var 4) (Var 2)) (Var 1)))))) (Lam (Lam (Lam (Var 1))))) (Lam (Lam (Var 2)))))
 geq = Lam (Lam (App (App (App (App (Var 2) (Lam (Lam (Lam (App (App (App (Var 3) (Lam (Lam (App (Var 1) (App (Var 2) (Var 4)))))) (Lam (Var 2))) (Lam (Var 1))))))) (Var 1)) (Lam (Lam (Lam (Var 1))))) (Lam (Lam (Var 2)))))
 ge = Lam (Lam (App (App (App (App (Var 2) (Lam (Lam (Lam (App (App (App (Var 3) (Lam (Lam (App (Var 1) (App (Var 2) (Var 4)))))) (Lam (Var 2))) (Lam (Var 1))))))) (Lam (Lam (App (Var 2) (App (App (Var 3) (Var 2)) (Var 1)))))) (Lam (Lam (Lam (Var 1))))) (Lam (Lam (Var 2)))))
-iszero = Lam $ Var 1 .$ Lam (Lam (Lam $ Var 1)) .$ Lam (Lam $ Var 2)
-eqq = simplify $ Lam (Lam $ and .$ (geq .$ Var 1 .$ Var 2) .$ (leq .$ Var 1 .$ Var 2))
 
 
 -- | Used to convert from a character in the source to Exps
 opTable :: [(Char,Exp)]
 opTable =
   [ ('B', b), ('C', c), ('I', i), ('K', k), ('o', _o), ('O', o), ('S', s), ('U', u), ('W', w), ('Y', y)
-  , ('T', true), ('F', false), ('?', ifelse), ('_',not), ('A',and), ('V',or), ('X',xor)
+  , ('T', true), ('F', false), ('i', ifelse), ('n',not), ('A',and), ('V',or), ('X',xor)
   , (']', succ), ('[', pred)
   , ('+', plus), ('-', sub), ('*', mult), ('`', pow)
   , ('=', eqq), ('L', leq), ('l', le), ('G', geq), ('g', ge), ('Z', iszero)

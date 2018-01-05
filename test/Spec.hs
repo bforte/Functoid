@@ -38,8 +38,8 @@ main = do putStrLn "\n------------ Running tests ------------"
         tests = logic ++ arithmetic ++ ski_bckw
 
 logic :: [String]
-logic = ["not true"  | false /= toExp '_' .$ true]
-             ++ ["not false" | true /= toExp '_' .$ false]
+logic = ["not true"  | false /= toExp 'n' .$ true]
+             ++ ["not false" | true /= toExp 'n' .$ false]
              ++ concat [testBin n op (toExp c) | (n,op,c) <- binops]
 
   where testBin n op lop = [n ++ show (a,b) | ((a,x),(b,y)) <- (,) <$> bs <*> bs

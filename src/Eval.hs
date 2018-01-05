@@ -16,13 +16,13 @@ import System.IO
 import System.Random hiding (next)
 
 -- Currently used characters:
--- "#$%*+,-.0123456789:;<=>?@ABCFGIKLOSTUVWXY[]^_`cfglov~
+-- "#$%*+,-.0123456789:;<=>?@ABCFGIKLOSTUVWXY[]^_`fgilnorv|~
 
 
 -- | Evaluate a Functoid program
 evalProg :: Flags -> [Exp] -> String -> IO ()
 evalProg fs as src = do
-  out <- (^. exp) <$> execProg initState fs go
+  out <- simplify . (^. exp) <$> execProg initState fs go
 
   let showNum  = fmap (("Church numeral: "++) . show) . toNum
       showBool = fmap (("Boolean: "++) . show) . toBool
@@ -39,12 +39,12 @@ evalProg fs as src = do
         go = getCmd >>= \case '@' -> return ()
                               c   -> evalCmd c >> doForce >> step >> go
         doForce
-          | fs ^. force = exp %= simplify
+          | fs ^. force = exp %!= simplify
           | otherwise   = return ()
 
 
 -- | Decide what to do depending on the just read character
-evalCmd :: Char -> LC ()
+evalCmd :: Char -> FC ()
 evalCmd c = case c of
   -- Modify the direction pointer
   '<' -> dir .= L
@@ -52,7 +52,15 @@ evalCmd c = case c of
   '^' -> dir .= U
   'v' -> dir .= D
   '?' -> liftIO (toEnum <$> randomRIO (0, 3)) >>= (dir .=)
-  'f' -> exp %= simplify
+  '_' -> -- Set direction to right iff expression is 0; left otherwise
+    toBool <$> use exp >>= \case
+      Just False -> dir .= R
+      _          -> dir .= L
+  '|' -> -- Set direction to down iff expression is 0; up otherwise
+    toBool <$> use exp >>= \case
+      Just False -> dir .= D
+      _          -> dir .= U
+  'f' -> exp %!= simplify
   '$' -> -- Use one command-line argument
     use args >>= \case
       (a:as) -> args .= as >> appExp a
@@ -71,7 +79,7 @@ evalCmd c = case c of
     toNum <$> use exp >>= putPretty
   '#' -> -- Jump instruction
     step
-  'c' -> -- Replace current expression with id
+  'r' -> -- Replace current expression with id
     exp .= id
   'l' -> -- Print newline
     putPretty "\n"
@@ -84,7 +92,7 @@ evalCmd c = case c of
     | otherwise -> -- No-op
         return ()
 
-  where appExp :: Exp -> LC ()
+  where appExp :: Exp -> FC ()
         appExp e = exp %= (.$ e)
 
         fromChar :: Char -> Exp
@@ -92,7 +100,7 @@ evalCmd c = case c of
           | c `elem` map fst opTable = head [ op | (c',op) <- opTable, c' == c]
           | otherwise = error $ "command " ++ show c ++ " not implemented"
 
-        accumNumber :: LC Exp
+        accumNumber :: FC Exp
         accumNumber = number . foldl ((+).(10*)) 0 . filter (>0) <$> go
           where go = getCmd >>= \case
                        '"'                  -> return []
@@ -106,7 +114,7 @@ evalCmd c = case c of
 
 
 -- | Get the current command that gets executed
-getCmd :: LC Char
+getCmd :: FC Char
 getCmd = do
   env <- get
   whenM (view verbose) $
@@ -115,7 +123,7 @@ getCmd = do
 
 
 -- | Step the program; move command pointer in the current direction
-step :: LC ()
+step :: FC ()
 step = do checkModifying
           e  <- get
           pos %= next (snd . bounds $ e ^. prog) (dxdy $ e ^. dir)
@@ -129,7 +137,7 @@ step = do checkModifying
 
 
 -- | Check if a source code modifying function is evaluated and possibly fire it
-checkModifying :: LC ()
+checkModifying :: FC ()
 checkModifying = use exp >>= \case
   Tri a b c -> case liftM3 (,,) (toNum a) (toNum b) (toChar c) of
                  Just (x,y,c) -> do
@@ -147,10 +155,10 @@ checkModifying = use exp >>= \case
 id :: Exp
 id = Lam $ Var 1
 
-whenM :: LC Bool -> LC () -> LC ()
+whenM :: FC Bool -> FC () -> FC ()
 whenM b f = b >>= flip when f
 
-putPretty :: Pretty a => a -> LC ()
+putPretty :: Pretty a => a -> FC ()
 putPretty a = do whenM (view clear) (exp .= id)
                  whenM (view exit) $ do
                    pos  .= (0,0)
@@ -160,7 +168,7 @@ putPretty a = do whenM (view clear) (exp .= id)
                            putErrLn "error: type mismatch"
                    x  -> liftIO $ P.putStr x
 
-putErrLn :: String -> LC ()
+putErrLn :: String -> FC ()
 putErrLn = liftIO . hPutStrLn stderr
 
 --prog2str :: Prog -> [String]

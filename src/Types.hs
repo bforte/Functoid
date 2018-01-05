@@ -11,16 +11,16 @@ import LambdaCalc
 import Data.Array
 import Control.Lens
 import Control.Monad.Reader
-import Control.Monad.State
+import Control.Monad.State.Strict
 
 
 -- | Monad transformer for Functoid computations
-newtype LC a = LC { unLC :: StateT Env (ReaderT Flags IO) a }
+newtype FC a = FC { unFC :: StateT Env (ReaderT Flags IO) a }
   deriving (Functor, Applicative, Monad, MonadState Env, MonadReader Flags, MonadIO)
 
 -- | Execute a Functoid computation
-execProg :: Env -> Flags -> LC a -> IO Env
-execProg s r c = runReaderT (execStateT (unLC c) s) r
+execProg :: Env -> Flags -> FC a -> IO Env
+execProg s r c = runReaderT (execStateT (unFC c) s) r
 
 type Prog = Array (Int,Int) Char
 
@@ -29,21 +29,27 @@ data Direction = L | R | U | D
 
 -- | State environment used for evaluation
 data Env = Env
-  { _prog :: Prog       -- ^ Functoid source
+  { _prog :: !Prog      -- ^ Functoid source
   , _args :: [Exp]      -- ^ Arguments passed to interpreter
   , _exp  :: Exp        -- ^ Current 'Exp'
-  , _pos  :: (Int,Int)  -- ^ Current position
-  , _dir  :: Direction  -- ^ Current travel direction
+  , _pos  :: !(Int,Int) -- ^ Current position
+  , _dir  :: !Direction -- ^ Current travel direction
   } deriving Show
+
+-- | Strict version of (%=)
+infix 4 %!=
+
+(%!=) :: ASetter Env Env a b -> (a -> b) -> FC ()
+l %!= f = modify' (l %~ f)
 
 
 -- | Reader type to keep track of different execution modes
 data Flags = Flags
-  { _clear   :: Bool  -- ^ Clear the current 'Exp' when printing
-  , _exit    :: Bool  -- ^ Exit as soon as print statement taken
-  , _force   :: Bool  -- ^ Always force simplifying
-  , _quiet   :: Bool  -- ^ Dont' print the final expression
-  , _verbose :: Bool  -- ^ Be verbose (print steps taken)
+  { _clear   :: !Bool  -- ^ Clear the current 'Exp' when printing
+  , _exit    :: !Bool  -- ^ Exit as soon as print statement taken
+  , _force   :: !Bool  -- ^ Always force simplifying
+  , _quiet   :: !Bool  -- ^ Dont' print the final expression
+  , _verbose :: !Bool  -- ^ Be verbose (print steps taken)
   }
 
 
