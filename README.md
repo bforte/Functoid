@@ -1,29 +1,30 @@
 # Lambdoid
 
-Lambdoid is a 2-dimensional fungeoid based on lambda calculus.
+One instruction pointer, a direction, a stack for the command-line arguments from
+which you can only pop, a mutable 2D source code and a single expression that you
+can apply new arguments to.
 
 
 ## Introduction
 
-There's no reason to give a formal definition for the lambda calculus here,
-instead refer to the various other sources that do so (for example [here][LC-wiki]).
-Instead I will showcase some of the internal definitions that `lambdoid` uses and
-how they can be used to do arithmetic. If you're not familiar with DeBruijn notation,
-you should probably check it out (for example [here][DB-wiki]) because this explanation
-will make use of it.
+There's no reason to give a formal definition for the [lambda
+calculus][LC-wiki] here, instead I will showcase some of the internal
+definitions that `lambdoid` uses and how they can be used to do arithmetic. If
+you're not familiar with DeBruijn notation, you should probably check it out
+(for example [here][DB-wiki]) because this explanation will make use of it.
 
 Internally `lambdoid` has no types to represent booleans, numbers, characters
-or even strings. Any expression in is defined in terms of lambda terms, please refer
-to the *Commands* section for how logic is defined. Characters are just another
-representation of integers (modulo 128 and converted to ASCII), numbers are defined
-as Church numerals:
+or even strings. Any expression is defined in terms of lambda terms, please
+refer to the *Commands* section for how logic is defined. Characters are just
+another representation of integers (modulo 128 and converted to ASCII), numbers
+are defined as Church numerals:
 
 - Zero is: *λλx1*
 - The successor function is: λλλ(x2 (x3 x2 x1))
 
 Now every other number *N* gets constructed by applying *N* times the successor
-function. For example 2 would be *(succ (succ 0))* which can be expanded
-and simplified:
+function. For example 2 would be *(succ (succ 0))* which can be expanded and
+simplified:
 
 1. *succ λλλ(x2 (x3 x2 x1)) λλx1*
 2. *succ λλ(x2 (λλx1 x2 x1))*
@@ -35,27 +36,27 @@ and simplified:
 8. *λλ(x2 (x2 x1))*
 
 As you can see in step 4 we arrive at an expression *(succ X)* and by
-definition of the number 1 we can infer that *1 == λλ(x2 x1)*, probably
-you notice the pattern that *N* is *λλ(x2 (…(x2 x1)…))* with *x2* repeated
-exactly *N* times.
+definition of the number 2 we can infer that *1 == λλ(x2 x1)*, probably you
+notice the pattern that *N* is *λλ(x2 (…(x2 x1)…))* with *x2* repeated exactly
+*N* times.
 
-All built-ins that work with numbers in `lambdoid` work like this and this
-is the reason that programs often are quite slow, it also implies that there
-are no negative numbers by default. Although you can simply define them how
-you want and work with your own definitions.
+All built-ins that work with numbers in `lambdoid` work like this and this is
+the reason that programs can be quite slow, it also implies that there are no
+negative numbers by default. Although you can simply define them how you want
+and work with your own definitions.
 
 
 ## The first program
 
 The interpreter internally keeps track of one single function and consecutively
 applies new expressions to that function. Apart from that it stores the current
-position and travel direction that the pointer moves next. At the beginning
-the internal function is the identity function (*λx1*), the position is `(0,0)`
+position and travel direction that the pointer moves next. At the beginning the
+internal function is the identity function (*λx1*), the position is `(0,0)`
 (top-left) and the pointer will move to the right.
 
 So the program `1@` would simply apply `1` (as we saw in the previous section
-this is *λλ(x2 x1)*) to the identity function which should give us `1` back, then
-it moves one to the right and will terminate (`@` terminates the program).
+this is *λλ(x2 x1)*) to the identity function which should give us `1` back,
+then it moves one to the right and will terminate (`@` terminates the program).
 
 Let us run that program (`-v` flag prints the steps and `-e` let's you specify
 the source via command-line):
@@ -67,15 +68,15 @@ $ lambdoid -ve "1@"
 Final expression: λλ(x2 x1)    [Church numeral: 1]
 ```
 
-At the end of the program the current function is printed to *stderr* and if
-it evaluates to a Boolean (see *Commands* for the definition used) or Church
+At the end of the program the current function is printed to *stderr* and if it
+evaluates to a Boolean (see *Commands* for the definition used) or Church
 numeral that will be displayed.
 
-Of course you can take user-input as well: When the interpreter is invoked
-all command-line arguments get parsed (you can input either lambda-terms or
+Of course you can take user-input as well: When the interpreter is invoked all
+command-line arguments get parsed (you can input either lambda-terms or
 shortcuts for numbers) and pushed to a stack. The command `$` will pop one
-argument and apply it to the current function (note how `v>^<` alter the
-flow of the program):
+argument and apply it to the current function (note how `v>^<` alter the flow
+of the program):
 
 ```
 $ cat test.l
@@ -85,24 +86,24 @@ $ lambdoid test.l 1
 Final expression: λλλ(x2 (x3 x2 x1))
 ```
 
-It's not surprising that this returns the successor function, since the
-only functions that get applied are `+` and `$` (which evaluates to `1`).
+It's not surprising that this returns the successor function, since the only
+functions that get applied are `+` and `$` (which evaluates to `1`).
 
 
 ## Hello, World!
 
-You might ask how you would use numbers larger than `9` without doing a
-lot of additions, that's where `"` comes into play. This special control
-character delimits multi-digit numbers which get applied once they're read,
-characters `<>^v@` still work inside delimited numbers and everything else
-gets converted to their ASCII code and used as base10 "digit" - for example
-`"abc"` which has corresponding codes of `97,98,99` is converted to `10779`.
+You might ask how you would use numbers larger than `9` without doing a lot of
+additions, that's where `"` comes into play. This special control character
+delimits multi-digit numbers which get applied once they're read, characters
+`<>^v@` still work inside delimited numbers and everything else gets converted
+to their ASCII code and used as base10 "digit" - for example `"abc"` which has
+corresponding codes of `97,98,99` is converted to `10779`.
 
 One thing to note is that by default (`-n` flag disables this) the commands
-`;,.` will print the current function (only if it evaluates to the corresponding
-"type") and clear the current function by overriding it with the identity
-function. Here's a simple way to write a "Hello, World!" which makes use
-of this ability to evaluate multiple functions sequentially:
+`;,.` will clear the current function by overriding it with the identity
+function and print the current function (only if it evaluates to the
+corresponding "type").  Here's a simple way to write a "Hello, World!" which
+makes use of this ability to evaluate multiple functions sequentially:
 
 ```
 $ lambdoid -qe '"H","e","l","l","o",","," ","W","o","r","l","d","!",@'
@@ -112,19 +113,19 @@ Hello, World!
 
 ## Lambda Calculus REPL
 
-The fact that everything internally is handled as lambda terms allows
-us to code up a REPL for the lambda calculi in just three characters:
+The fact that everything internally is handled as lambda terms allows us to
+code up a REPL for the lambda calculi in just three characters:
 
 ```
 $ cat lambda-repl.l
 ~:l
 ```
 
-This demonstrates how user input (either `~` or by command-line arguments)
-are parsed and for the first time we see how the pointer simply wraps
-around whenever it would move out of the source code. The character `~` asks
-the user for input (without prompting), parses it (you can either use `\` or `λ`
-as lambda) and applies it to the current thunk:
+This demonstrates how user input (either `~` or by command-line arguments) are
+parsed and for the first time we see how the pointer simply wraps around
+whenever it would move out of the source code. The character `~` asks the user
+for input (without printing to the screen), parses it (you can either use `\`
+or `λ` as lambda) and applies it to the current thunk:
 
 For clarity pressing <kbd>Enter</kbd> is highlighted with `⏎`:
 
@@ -142,8 +143,8 @@ $ lambdoid lambda-repl.l
 **Note:** The spaces between for example `x2` and `(` are mandatory, they
 denote function application.
 
-You can also run it with the `-n` flag such that `:` won't clear the
-current expression, this allows to succesively apply the lines:
+You can also run it with the `-n` flag such that `:` won't clear the current
+expression, this allows to succesively apply the lines:
 
 ```
 $ lambdoid -n lambda-repl.l
@@ -155,6 +156,50 @@ $ lambdoid -n lambda-repl.l
 λλ(x2 (x2 (x2 x1)))
 ^C
 ```
+
+
+## Lazyness
+
+By default `lambdoid` is lazy which means it won't evaluate (*β*-reduce) the
+sometimes huge expression which is good. For example if we'd try to evaluate
+the *Ω*-combinator we would never be done, try running this:
+
+```
+lambdoid -e "O@"
+
+Final expression: λx1 (^C
+```
+
+It won't terminate and you'll have to kill it with <kbd>Ctrl</kbd>+<kbd>C</kbd>
+(that's the `^C` you can see). As we know `c` will override the current
+expression with the identity function, now let's try the following:
+
+```
+lambdoid -e "Oc@"
+
+Final expression: λx1
+```
+
+This time it terminates, that's because `lambdoid` only ever evaluates stuff if
+it really needs to. In fact try running it with `-q` flag and see what happens.
+If you don't like this behaviour however you can force evaluation at each step
+with the `-f` flag - meaning `lambdoid -qfe "Of@"` wont' terminate.
+
+
+<!-- ## Control flow
+
+TODO: write something here
+
+describe how ? can be used and implement conditional reflectors & bridges
+
+
+## Modifying the source
+
+TODO: write something here
+
+eg. starting with a simple example: %00"64"f
+
+-->
 
 
 ## Commands
@@ -218,7 +263,7 @@ to the current function:
 |    `g`       | ge                                   | *λλ(x2 λλλ(x3 λλ(x1 (x2 x4)) λx2 λx1) λλ(x2 (x3 x2 x1)) λλλx1 λλx2)* |
 |    `Z`       | is zero                              | λ(x1 λλλx1 λλx2) |
 
-<sub>* see the section *Lambda calculus REPL* </sub>
+<sub>* see the section *Lambda calculus REPL* on how inputs are read </sub>
 
 <sub>** *sub a b* with *a < b* will result in *0* </sub>
 
