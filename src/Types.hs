@@ -41,6 +41,7 @@ data Env = Env
 data Flags = Flags
   { _clear   :: Bool  -- ^ Clear the current 'Exp' when printing
   , _exit    :: Bool  -- ^ Exit as soon as print statement taken
+  , _force   :: Bool  -- ^ Always force simplifying
   , _quiet   :: Bool  -- ^ Dont' print the final expression
   , _verbose :: Bool  -- ^ Be verbose (print steps taken)
   }
@@ -53,9 +54,9 @@ data Opts = Opts
   , _help  :: Bool   -- ^ Only print help and exit
   }
 
--- | By default read from file, clear 'Exp' when evaluating and keep quiet
+-- | By default: clear when evaluating, keep going, be lazy, and keep quiet
 defaults :: Opts
-defaults = Opts False (Flags True False False False) False
+defaults = Opts False (Flags True False False False False) False
 
 
 makeLenses ''Env

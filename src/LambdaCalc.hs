@@ -15,6 +15,7 @@ import Prelude hiding (pred,succ,and,or,not)
 -- | Exp type for lambda calculus terms
 data Exp = Var Integer
          | Lam Exp
+         | Tri Exp Exp Exp  -- Triple (x,y,newchar) for modifying the source
          | App Exp Exp
 
 (.$) = App
@@ -23,6 +24,7 @@ instance Show Exp where
   show (Var a) = "x" ++ show a
   show (Lam a@(App _ _)) = "λ(" ++ show a ++ ")"
   show (Lam a) = "λ" ++ show a
+  show (Tri a b c) = "[" ++ show a ++ "," ++ show b ++ "," ++ show c ++ "]"
   show (App a b@(App _ _)) = show a ++ " (" ++ show b ++ ")"
   show (App a b) = show a ++ " " ++ show b
 
@@ -33,6 +35,7 @@ instance Eq Exp where
 
 eq (Var a) (Var b) = a == b
 eq (Lam a) (Lam b) = eq a b
+eq (Tri a b c) (Tri d e f) = eq a d && eq b e && eq c f
 eq (App a b) (App c d) = eq a c && eq b d
 eq _ _ = False
 
@@ -84,6 +87,7 @@ simplify e
   | otherwise = simplify e'
   where e' = simplify' e
         simplify' (Lam a) = Lam $ simplify' a
+        simplify' (Tri a b c) = Tri (simplify' a) (simplify' b) (simplify' c)
         simplify' (App (Lam a) b) = betaReduce a b
         simplify' (App a b) = App (simplify' a) (simplify' b)
         simplify' e = e
@@ -94,13 +98,20 @@ simplify e
                   | n <  b = Var $ b-1
                   | otherwise = Var b
                 sub n a (Lam b) = Lam $ sub (n+1) (incFree 0 a) b
+                sub n a (Tri b c d) = Tri (sub n a b) (sub n a c) (sub n a d)
                 sub n a (App b c) = App (sub n a b) (sub n a c)
 
                 incFree n (Var a)
                   | n < a = Var $ a+1
                   | otherwise = Var a
                 incFree n (Lam a) = Lam $ incFree (n+1) a
+                incFree n (Tri a b c) = Tri (incFree n a) (incFree n b) (incFree n c)
                 incFree n (App a b) = App (incFree n a) (incFree n b)
+
+-- | Modify the source; arguments: @x y c@
+-- where @(x,y)@ is the position (modulo source bounds) and
+-- @c@ is the new character (modulo 128)
+modify = Lam $ Lam $ Lam $ Tri (Var 3) (Var 2) (Var 1)
 
 
 -- | Combinators
@@ -119,6 +130,7 @@ y  = Lam (Lam (Var 2 .$ (Var 1 .$ Var 1)) .$ Lam (Var 2 .$ (Var 1 .$ Var 1)))
 -- | Boolean logic
 true   = Lam (Lam $ Var 2)
 false  = Lam (Lam $ Var 1)
+ifelse = Lam (Lam (Lam $ Var 3 .$ Var 2 .$ Var 1))
 
 and = Lam (Lam $ Var 2 .$ Var 1 .$ Var 2)
 or  = Lam (Lam $ Var 2 .$ Var 2 .$ Var 1)
@@ -149,8 +161,9 @@ eqq = simplify $ Lam (Lam $ and .$ (geq .$ Var 1 .$ Var 2) .$ (leq .$ Var 1 .$ V
 opTable :: [(Char,Exp)]
 opTable =
   [ ('B', b), ('C', c), ('I', i), ('K', k), ('o', _o), ('O', o), ('S', s), ('U', u), ('W', w), ('Y', y)
-  , ('T', true), ('F', false), ('_',not), ('A',and), ('V',or), ('X',xor)
+  , ('T', true), ('F', false), ('?', ifelse), ('_',not), ('A',and), ('V',or), ('X',xor)
   , (']', succ), ('[', pred)
   , ('+', plus), ('-', sub), ('*', mult), ('`', pow)
   , ('=', eqq), ('L', leq), ('l', le), ('G', geq), ('g', ge), ('Z', iszero)
+  , ('%', modify)
   ]

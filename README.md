@@ -178,10 +178,12 @@ to the current function:
 |    `;`       | output value as Boolean              |              |
 |    `,`       | output value as ASCII (mod 128) char |              |
 |    `.`       | output value as number               |              |
+|    `l`       | print newline                        |              |
 |    `#`       | jump instruction                     |              |
 |    `"`       | number delimiter                     |              |
+|    `f`       | force evaluation                     |              |
 |    `c`       | replace current expression with id   | set to *λx1* |
-|    `l`       | print newline                        |              |
+|    `%`       | *modify x y c* -> set *(x,y)* to *c* | *λλλ[x3,x2,x1]* |
 |              |                                      |              |
 |    `B`       | *B*-combinator                       | *λλλ(x3 (x2 x1))* |
 |    `C`       | *C*-combinator                       | *λλλ(x3 x1 x2)* |
@@ -196,6 +198,7 @@ to the current function:
 |              |                                      |              |
 |    `T`       | true                                 | *λλx2*       |
 |    `F`       | false                                | *λλx1*       |
+|    `?`       | if-else                              | *λλλ(x3 x2 x1)* |
 |    `_`       | not                                  | *λ(x1 λλx1 λλx2)* |
 |    `A`       | and                                  | *λλ(x2 x1 x2)* |
 |    `V`       | or                                   | *λλ(x2 x2 x1)* |

@@ -33,6 +33,7 @@ main = getOpt Permute options <$> getArgs >>= \case
 -- | Command-line options
 options :: [OptDescr (Opts -> Opts)]
 options = [ Option "e" ["expression"] (NoArg (& expr .~ True)) "use command-line argument as source"
+          , Option "f" ["force"] (NoArg (& flags . force .~ True)) "always force evaluation"
           , Option "n" ["no-clear"] (NoArg (& flags . clear .~ False)) "don't clear the current lambda term when printing"
           , Option "v" ["verbose"] (NoArg (& flags . verbose .~ True)) "print steps taken"
           , Option "q" ["quiet"] (NoArg (& flags . quiet .~ True)) "don't print the final lambda term"

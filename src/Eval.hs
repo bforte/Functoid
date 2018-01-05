@@ -16,7 +16,7 @@ import System.IO
 import System.Random hiding (next)
 
 -- Currently used characters:
--- "#$*+,-.0123456789:;<=>?@ABCFGIKLOSTUVWXY[]^_`cglov~
+-- "#$%*+,-.0123456789:;<=>?@ABCFGIKLOSTUVWXY[]^_`cfglov~
 
 
 -- | Evaluate a Lambdoid program
@@ -37,8 +37,10 @@ evalProg fs as src = do
 
         -- Loop the program until '@' is reached
         go = getCmd >>= \case '@' -> return ()
-                              c   -> do evalCmd c
-                                        step >> go
+                              c   -> evalCmd c >> doForce >> step >> go
+        doForce
+          | fs ^. force = exp %= simplify
+          | otherwise   = return ()
 
 
 -- | Decide what to do depending on the just read character
@@ -50,6 +52,7 @@ evalCmd c = case c of
   '^' -> dir .= U
   'v' -> dir .= D
   '?' -> liftIO (toEnum <$> randomRIO (0, 3)) >>= (dir .=)
+  'f' -> exp %= simplify
   '$' -> -- Use one command-line argument
     use args >>= \case
       (a:as) -> args .= as >> appExp a
@@ -113,7 +116,8 @@ getCmd = do
 
 -- | Step the program; move command pointer in the current direction
 step :: LC ()
-step = do e  <- get
+step = do checkModifying
+          e  <- get
           pos %= next (snd . bounds $ e ^. prog) (dxdy $ e ^. dir)
 
   where next (m,n) (dx,dy) (x,y) = (mod(x+dx)(m+1), mod(y+dy)(n+1))
@@ -122,6 +126,22 @@ step = do e  <- get
         dxdy R = ( 0, 1)
         dxdy U = (-1, 0)
         dxdy D = ( 1, 0)
+
+
+-- | Check if a source code modifying function is evaluated and possibly fire it
+checkModifying :: LC ()
+checkModifying = use exp >>= \case
+  Tri a b c -> case liftM3 (,,) (toNum a) (toNum b) (toChar c) of
+                 Just (x,y,c) -> do
+                   (m,n) <- snd . bounds <$> use prog
+                   let p = (mod(fromIntegral x)(m+1),mod(fromIntegral y)(n+1))
+                   prog %= (// [(p,c)])
+                   whenM (view verbose) $
+                     putErrLn $ "Modify source " ++ show p ++ " -> " ++ show c
+                 Nothing -> return ()
+  _ -> return ()
+
+  where
 
 
 id :: Exp
@@ -142,3 +162,10 @@ putPretty a = do whenM (view clear) (exp .= id)
 
 putErrLn :: String -> LC ()
 putErrLn = liftIO . hPutStrLn stderr
+
+--prog2str :: Prog -> [String]
+--prog2str = map (map snd)
+--         . map (sortOn (snd . fst))
+--         . groupBy (\x y-> fst (fst x) == fst (fst y))
+--         . sortOn (fst . fst)
+--         . assocs
