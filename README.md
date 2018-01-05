@@ -1,4 +1,4 @@
-# Lambdoid
+# Functoid
 
 One instruction pointer, a direction, a stack for the command-line arguments from
 which you can only pop, a mutable 2D source code and a single expression that you
@@ -9,11 +9,11 @@ can apply new arguments to.
 
 There's no reason to give a formal definition for the [lambda
 calculus][LC-wiki] here, instead I will showcase some of the internal
-definitions that `lambdoid` uses and how they can be used to do arithmetic. If
+definitions that `functoid` uses and how they can be used to do arithmetic. If
 you're not familiar with DeBruijn notation, you should probably check it out
 (for example [here][DB-wiki]) because this explanation will make use of it.
 
-Internally `lambdoid` has no types to represent booleans, numbers, characters
+Internally `functoid` has no types to represent booleans, numbers, characters
 or even strings. Any expression is defined in terms of lambda terms, please
 refer to the *Commands* section for how logic is defined. Characters are just
 another representation of integers (modulo 128 and converted to ASCII), numbers
@@ -26,7 +26,7 @@ Now every other number *N* gets constructed by applying *N* times the successor
 function. For example 2 would be *(succ (succ 0))* which can be expanded and
 simplified:
 
-1. *succ λλλ(x2 (x3 x2 x1)) λλx1*
+1. *succ (λλλ(x2 (x3 x2 x1)) λλx1)*
 2. *succ λλ(x2 (λλx1 x2 x1))*
 3. *succ λλ(x2 (λx1 x1))*
 4. *succ λλ(x2 x1)*
@@ -40,7 +40,7 @@ definition of the number 2 we can infer that *1 == λλ(x2 x1)*, probably you
 notice the pattern that *N* is *λλ(x2 (…(x2 x1)…))* with *x2* repeated exactly
 *N* times.
 
-All built-ins that work with numbers in `lambdoid` work like this and this is
+All built-ins that work with numbers in `functoid` work like this and this is
 the reason that programs can be quite slow, it also implies that there are no
 negative numbers by default. Although you can simply define them how you want
 and work with your own definitions.
@@ -62,7 +62,7 @@ Let us run that program (`-v` flag prints the steps and `-e` let's you specify
 the source via command-line):
 
 ```
-$ lambdoid -ve "1@"
+$ functoid -ve "1@"
 (0,0) [R]
 (0,1) [R]
 Final expression: λλ(x2 x1)    [Church numeral: 1]
@@ -79,10 +79,10 @@ argument and apply it to the current function (note how `v>^<` alter the flow
 of the program):
 
 ```
-$ cat test.l
+$ cat test.f
 v@ <
 >+$^
-$ lambdoid test.l 1
+$ functoid test.f 1
 Final expression: λλλ(x2 (x3 x2 x1))
 ```
 
@@ -106,7 +106,7 @@ corresponding "type").  Here's a simple way to write a "Hello, World!" which
 makes use of this ability to evaluate multiple functions sequentially:
 
 ```
-$ lambdoid -qe '"H","e","l","l","o",","," ","W","o","r","l","d","!",@'
+$ functoid -qe '"H","e","l","l","o",","," ","W","o","r","l","d","!",@'
 Hello, World!
 ```
 
@@ -117,7 +117,7 @@ The fact that everything internally is handled as lambda terms allows us to
 code up a REPL for the lambda calculi in just three characters:
 
 ```
-$ cat lambda-repl.l
+$ cat lambda-repl.f
 ~:l
 ```
 
@@ -130,7 +130,7 @@ or `λ` as lambda) and applies it to the current thunk:
 For clarity pressing <kbd>Enter</kbd> is highlighted with `⏎`:
 
 ```
-$ lambdoid lambda-repl.l
+$ functoid lambda-repl.f
 \\\(x2 (x3 x2 x1)) ⏎
 λλλ(x2 (x3 x2 x1))
 1 ⏎
@@ -147,7 +147,7 @@ You can also run it with the `-n` flag such that `:` won't clear the current
 expression, this allows to succesively apply the lines:
 
 ```
-$ lambdoid -n lambda-repl.l
+$ functoid -n lambda-repl.f
 \\(x2 (x2 x1)) ⏎
 λλ(x2 (x2 x1))
 \\\(x2 (x3 x2 x1)) ⏎
@@ -160,12 +160,12 @@ $ lambdoid -n lambda-repl.l
 
 ## Lazyness
 
-By default `lambdoid` is lazy which means it won't evaluate (*β*-reduce) the
+By default `functoid` is lazy which means it won't evaluate (*β*-reduce) the
 sometimes huge expression which is good. For example if we'd try to evaluate
 the *Ω*-combinator we would never be done, try running this:
 
 ```
-lambdoid -e "O@"
+functoid -e "O@"
 
 Final expression: λx1 (^C
 ```
@@ -175,15 +175,15 @@ It won't terminate and you'll have to kill it with <kbd>Ctrl</kbd>+<kbd>C</kbd>
 expression with the identity function, now let's try the following:
 
 ```
-lambdoid -e "Oc@"
+functoid -e "Oc@"
 
 Final expression: λx1
 ```
 
-This time it terminates, that's because `lambdoid` only ever evaluates stuff if
+This time it terminates, that's because `functoid` only ever evaluates stuff if
 it really needs to. In fact try running it with `-q` flag and see what happens.
 If you don't like this behaviour however you can force evaluation at each step
-with the `-f` flag - meaning `lambdoid -qfe "Of@"` wont' terminate.
+with the `-f` flag - meaning `functoid -qfe "Of@"` wont' terminate.
 
 
 <!-- ## Control flow
@@ -204,7 +204,7 @@ eg. starting with a simple example: %00"64"f
 
 ## Commands
 
-This is the full list of all commands that `lambdoid` currently knows
+This is the full list of all commands that `functoid` currently knows
 each with a description and possibly the lambda term that gets applied
 to the current function:
 
@@ -228,7 +228,7 @@ to the current function:
 |    `"`       | number delimiter                     |              |
 |    `f`       | force evaluation                     |              |
 |    `c`       | replace current expression with id   | set to *λx1* |
-|    `%`       | *modify x y c* -> set *(x,y)* to *c* | *λλλ[x3,x2,x1]* |
+|    `%`       | *modify x y z* -> set *(x,y)* to *z* | *λλλ[x3,x2,x1]* |
 |              |                                      |              |
 |    `B`       | *B*-combinator                       | *λλλ(x3 (x2 x1))* |
 |    `C`       | *C*-combinator                       | *λλλ(x3 x1 x2)* |
@@ -243,7 +243,7 @@ to the current function:
 |              |                                      |              |
 |    `T`       | true                                 | *λλx2*       |
 |    `F`       | false                                | *λλx1*       |
-|    `?`       | if-else                              | *λλλ(x3 x2 x1)* |
+|    `?`       | if *z* then *x* else *y*             | *λλλ(x1 x3 x2)* |
 |    `_`       | not                                  | *λ(x1 λλx1 λλx2)* |
 |    `A`       | and                                  | *λλ(x2 x1 x2)* |
 |    `V`       | or                                   | *λλ(x2 x2 x1)* |
@@ -275,7 +275,7 @@ to the current function:
 Make sure you've got either `cabal` or `stack` installed, then clone the repo:
 
 ```
-$ git clone git://github.com/bforte/Lambdoid.git
+$ git clone git://github.com/bforte/Functoid.git
 ```
 
 

@@ -1,9 +1,8 @@
-name:                Lambdoid
+name:                Functoid
 version:             0.1.0.0
-synopsis:            Lambdoid is a 2-dimensional fungeoid based on lambda calculus.
-homepage:            https://github.com/bforte/Lambdoid#README.md
+synopsis:            Functoid is a 2-dimensional fungeoid based on lambda calculus.
+homepage:            https://github.com/bforte/Functoid#README.md
 license:             BSD3
-license-file:        LICENSE
 category:            Language
 build-type:          Simple
 cabal-version:       >=1.10
@@ -11,9 +10,9 @@ extra-source-files:  README.md
 
 source-repository head
   type: git
-  location: https://github.com/bforte/Lambdoid
+  location: https://github.com/bforte/Functoid
 
-executable lambdoid
+executable functoid
   hs-source-dirs:      src
   main-is:             Main.hs
   other-modules:       Eval
@@ -30,7 +29,7 @@ executable lambdoid
                      , parsec
                      , random
 
-test-suite lambdoid-test
+test-suite functoid-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      src
                      , test

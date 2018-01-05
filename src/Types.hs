@@ -14,11 +14,11 @@ import Control.Monad.Reader
 import Control.Monad.State
 
 
--- | Monad transformer for Lambdoid computations
+-- | Monad transformer for Functoid computations
 newtype LC a = LC { unLC :: StateT Env (ReaderT Flags IO) a }
   deriving (Functor, Applicative, Monad, MonadState Env, MonadReader Flags, MonadIO)
 
--- | Execute a Lambdoid computation
+-- | Execute a Functoid computation
 execProg :: Env -> Flags -> LC a -> IO Env
 execProg s r c = runReaderT (execStateT (unLC c) s) r
 
@@ -29,7 +29,7 @@ data Direction = L | R | U | D
 
 -- | State environment used for evaluation
 data Env = Env
-  { _prog :: Prog       -- ^ Lambdoid source
+  { _prog :: Prog       -- ^ Functoid source
   , _args :: [Exp]      -- ^ Arguments passed to interpreter
   , _exp  :: Exp        -- ^ Current 'Exp'
   , _pos  :: (Int,Int)  -- ^ Current position

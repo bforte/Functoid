@@ -19,7 +19,7 @@ import System.Random hiding (next)
 -- "#$%*+,-.0123456789:;<=>?@ABCFGIKLOSTUVWXY[]^_`cfglov~
 
 
--- | Evaluate a Lambdoid program
+-- | Evaluate a Functoid program
 evalProg :: Flags -> [Exp] -> String -> IO ()
 evalProg fs as src = do
   out <- (^. exp) <$> execProg initState fs go

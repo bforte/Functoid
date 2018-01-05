@@ -26,7 +26,7 @@ main = getOpt Permute options <$> getArgs >>= \case
                                             hGetContents >>= evalProg f as
 
         readArgs = foldr id defaults
-        usage = "usage: lambdoid [OPTIONS] [-e expr | file] [INPUTS]"
+        usage = "usage: functoid [OPTIONS] [-e expr | file] [INPUTS]"
         die m = ioError $ userError $ m ++ "\n" ++ usageInfo usage options
 
 

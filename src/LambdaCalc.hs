@@ -130,7 +130,7 @@ y  = Lam (Lam (Var 2 .$ (Var 1 .$ Var 1)) .$ Lam (Var 2 .$ (Var 1 .$ Var 1)))
 -- | Boolean logic
 true   = Lam (Lam $ Var 2)
 false  = Lam (Lam $ Var 1)
-ifelse = Lam (Lam (Lam $ Var 3 .$ Var 2 .$ Var 1))
+ifelse = Lam (Lam (Lam $ Var 1 .$ Var 3 .$ Var 1))
 
 and = Lam (Lam $ Var 2 .$ Var 1 .$ Var 2)
 or  = Lam (Lam $ Var 2 .$ Var 2 .$ Var 1)
