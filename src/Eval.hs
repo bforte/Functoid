@@ -70,7 +70,7 @@ evalCmd c = case c of
       Left _  -> return ()
       Right e -> appExp e
   ':' -> -- Output the current lambda term
-    use exp >>= putPretty
+    simplify <$> use exp >>= putPretty
   ';' -> -- Output value as Bool
     toBool <$> use exp >>= putPretty
   ',' -> -- Output value as ASCII char
@@ -85,11 +85,9 @@ evalCmd c = case c of
     putPretty "\n"
   '"' -> -- Accumulate number & apply it
     step >> accumNumber >>= appExp
-  '(' -> -- Collect functions to compose and apply it to expression
-        step >> accumFuncs c >>= appExp
-  ')' -> -- Collect functions to compose and apply expression to it
-        step >> accumFuncs c >>= (exp%=).(.$)
-  _ | c `elem` digits -> -- Apply a number literal
+  _ | c `elem` "()" -> -- Evaluate nested expression
+        nestedExpr c
+    | c `elem` digits -> -- Apply a number literal
         appExp . number $ toNumber c
     | c `elem` builtins -> -- Apply an expression from opTable
         appExp $ toExp c
@@ -103,8 +101,8 @@ evalCmd c = case c of
         accumNumber = number . foldl ((+).(10*)) 0 <$> go
           where go = getCmd >>= \case
                        '"'                  -> return []
-                       c | c `elem` "<>^v"  -> evalCmd c >> step >> go
-                         | c == '@'         -> exitProgram >> return []
+                       c | c == '@'         -> exitProgram >> return []
+                         | c `elem` "<>^v?" -> evalCmd c >> step >> go
                          | otherwise        -> step >> (toNumber c :) <$> go
 
         toNumber :: Char -> Integer
@@ -115,47 +113,53 @@ evalCmd c = case c of
         digits :: [Char]
         digits = "0123456789"
 
-        accumFuncs :: Char -> FC Exp
-        accumFuncs p = go id
-          where go f = getCmd >>= \case
-                         '"' -> do a <- step >> accumNumber
-                                   go (f .$ a)
-                         c | c `elem` "<>^v"   -> evalCmd c >> step >> go f
-                           | c `elem` digits   -> step >> go (f .$ number (toNumber c))
-                           | c == '@'          -> exitProgram >> return f
-                           | c == close p      -> return f
-                           | c == '('          -> do g <- step >> accumFuncs c
-                                                     step >> go (f .$ g)
-                           | c == ')'          -> do g <- step >> accumFuncs c
-                                                     step >> go (g .$ f)
-                           | c `elem` builtins -> step >> go (f .$ toExp c)
-                           | otherwise         -> step >> go  f
+        nestedExpr :: Char -> FC ()
+        nestedExpr p = do
+          before <- use exp
+          exp .= id
+          go
+          after <- use exp
 
-                close c | c == '('  = ')'
-                        | otherwise = '('
+          if p == ')' then exp .= after .$ before
+                      else exp .= before .$ after
+
+          where go = step' False >> getCmd >>= \case
+                       '@'            -> exitProgram
+                       c | c == close -> return ()
+                         | otherwise  -> evalCmd c >> go
+
+                close | p == '('  = ')'
+                      | otherwise = '('
 
 
 -- | Get the current command that gets executed
 getCmd :: FC Char
 getCmd = do
   env <- get
+  let p = env ^. pos
+      c = (env ^. prog) ! p
   whenM (view verbose) $
-    putErrLn $ show (env ^. pos) ++ " [" ++ show (env ^. dir) ++ "]"
-  return $ (env ^. prog) ! (env ^. pos)
+    putErrLn $ show (yx2xy p) ++ " " ++ show c ++ " [" ++ show (env ^. dir) ++ "]"
+  return c
 
 
 -- | Step the program; move command pointer in the current direction
 step :: FC ()
-step = do checkAction
-          e  <- get
-          pos %= next (snd . bounds $ e ^. prog) (dxdy $ e ^. dir)
+step = step' True
 
-  where next (m,n) (dx,dy) (x,y) = (mod(x+dx)(m+1), mod(y+dy)(n+1))
+-- | Step the program; but only check for actions if flag set
+step' :: Bool -> FC ()
+step' c = do if c then checkAction
+                  else return ()
+             e  <- get
+             pos %= next (snd . bounds $ e ^. prog) (dydx $ e ^. dir)
 
-        dxdy L = ( 0,-1)
-        dxdy R = ( 0, 1)
-        dxdy U = (-1, 0)
-        dxdy D = ( 1, 0)
+  where next (m,n) (dy,dx) (y,x) = (mod(y+dy)(m+1), mod(x+dx)(n+1))
+
+        dydx L = ( 0,-1)
+        dydx R = ( 0, 1)
+        dydx U = (-1, 0)
+        dydx D = ( 1, 0)
 
 
 -- | Check if an action is evaluated and possibly fire it
@@ -164,10 +168,11 @@ checkAction = use exp >>= \case
   Tri a b c -> case liftM3 (,,) (toNum a) (toNum b) (toChar c) of
                  Just (x,y,c) -> do
                    (m,n) <- snd . bounds <$> use prog
-                   let p = (mod(fromIntegral x)(m+1),mod(fromIntegral y)(n+1))
+                   let p = (mod(fromIntegral y)(m+1),mod(fromIntegral x)(n+1))
                    prog %= (// [(p,c)])
+                   exp .= id
                    whenM (view verbose) $
-                     putErrLn $ "Modify source " ++ show p ++ " -> " ++ show c
+                     putErrLn $ "Modify source " ++ show (yx2xy p) ++ " -> " ++ show c
                  Nothing -> return ()
   Lit Exit -> exitProgram
   Lit Reset -> exp .= id
@@ -177,11 +182,6 @@ checkAction = use exp >>= \case
 exitProgram :: FC ()
 exitProgram = pos .= (0,0) >> prog .= array ((0,0),(0,0)) [((0,0),'@')]
 
-id :: Exp
-id = Lam $ Var 1
-
-whenM :: FC Bool -> FC () -> FC ()
-whenM b f = b >>= flip when f
 
 putPretty :: Pretty a => a -> FC ()
 putPretty a = do whenM (view clear) (exp .= id)
@@ -191,11 +191,27 @@ putPretty a = do whenM (view clear) (exp .= id)
                            putErrLn "error: type mismatch"
                    x  -> liftIO $ P.putStr x
 
+
+id :: Exp
+id = Lam $ Var 1
+
+whenM :: FC Bool -> FC () -> FC ()
+whenM b f = b >>= flip when f
+
 putErrLn :: String -> FC ()
 putErrLn = liftIO . hPutStrLn stderr
 
+yx2xy :: (a,b) -> (b,a)
+yx2xy (a,b) = (b,a)
+
+
+-- | Debugging related stuff
+
 --dbg :: Show a => a -> FC a
 --dbg a = putErrLn (show a) >> return a
+
+--dbgEval :: Bool -> String -> IO ()
+--dbgEval v = evalProg (defaults ^. flags & verbose .~ v) []
 
 --prog2str :: Prog -> [String]
 --prog2str = map (map snd)

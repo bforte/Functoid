@@ -16,7 +16,7 @@ you're not familiar with DeBruijn notation, you should probably check it out
 (for example [here][DB-wiki]) because this explanation will make use of it -
 however for clarity *xN* will be used instead of *N*.
 
-Internally `functoid` has no types to represent booleans, numbers, characters
+Internally `functoid` has no types to represent Booleans, numbers, characters
 or even strings. Any expression is defined in terms of lambda terms, please
 refer to the [*Commands*](#commands) section for how logic is defined.
 Characters are just another representation of integers (modulo 128 and
@@ -66,8 +66,9 @@ the source via command-line):
 
 ```
 $ functoid -ve "1@"
-(0,0) [R]
-(0,1) [R]
+(0,0) '1' [R]
+(1,0) '@' [R]
+
 Final expression: λλ(x2 x1)    [Church numeral: 1]
 ```
 
@@ -82,10 +83,11 @@ argument and apply it to the current function (note how `v>^<` alter the flow
 of the program unconditionally):
 
 ```
-$ cat test.f
+$ cat succ.f
 v@ <
 >+$^
-$ functoid test.f 1
+$ functoid examples/succ.f 1
+
 Final expression: λλλ(x2 (x3 x2 x1))
 ```
 
@@ -98,7 +100,7 @@ functions that get applied are `+` and `$` (which evaluates to *1*).
 You might ask how you would use numbers larger than `9` without doing a lot of
 additions, that's where `"` comes into play. This special control character
 delimits multi-digit numbers which get applied once they're read, characters
-`<>^v@` still work inside delimited numbers and everything else gets converted
+`<>^v@?` still work inside delimited numbers and everything else gets converted
 to their ASCII code and used as base10 "digit" - for example `"abc"` which has
 corresponding codes of `97,98,99` is converted to `10779`.
 
@@ -120,20 +122,20 @@ The fact that everything internally is handled as lambda terms allows us to
 code up a REPL for the lambda calculi in just three characters:
 
 ```
-$ cat lambda-repl.f
-~:l
+$ cat examples/lc-repl.f
+~:p
 ```
 
 This demonstrates how user input (either `~` or by command-line arguments) are
 parsed and for the first time we see how the pointer simply wraps around
 whenever it would move out of the source code. The character `~` asks the user
 for input (without printing to the screen), parses it* (you can either use `\`
-or `λ` as lambda) and applies it to the current thunk:
+or `λ` as lambda) and applies it to the current term:
 
 For clarity pressing <kbd>Enter</kbd> is highlighted with `⏎`:
 
 ```
-$ functoid lambda-repl.f
+$ functoid examples/lc-repl.f
 \\\(x2 (x3 x2 x1)) ⏎
 λλλ(x2 (x3 x2 x1))
 1 ⏎
@@ -147,7 +149,7 @@ $ functoid lambda-repl.f
 denote function application.
 
 You can also run it with the `-n` flag such that `:` won't clear the current
-expression, this allows to succesively apply the lines:
+expression, this allows to successively apply the lines:
 
 ```
 $ functoid -n lambda-repl.f
@@ -163,7 +165,7 @@ $ functoid -n lambda-repl.f
 <sub>* It allows all commands that define an expression, eg. `1`,`T`,`S` etc.</sub>
 
 
-## Lazyness
+## Laziness
 
 By default `functoid` is lazy which means it won't evaluate (*β*-reduce) the
 sometimes huge expression which is good. For example if we'd try to evaluate
@@ -172,7 +174,7 @@ the *Ω*-combinator we would never be done, try running this:
 ```
 functoid -e "O@"
 
-Final expression: λx1 (^C
+Final expression: ^C
 ```
 
 It won't terminate and you'll have to kill it with <kbd>Ctrl</kbd>+<kbd>C</kbd>
@@ -192,27 +194,83 @@ evaluation at each step with the `-f` flag - meaning `functoid -qfe "Or@"`
 wont' terminate.
 
 
-<!-- ## Control flow
+## Control flow
 
-TODO: write something here
+Though there's not really a need for control flow other than recursion, there's
+still the possibility of modifying the direction of the instruction pointer
+conditionally like in Befunge. The reflectors `|` and `_` force evaluation of
+the current term and iff it evaluates to *false* (this is the same as *0*) to
+down (for `|`) and right (for `_`) and to the opposite direction in the other
+case.
 
-describe how ? can be used and implement conditional reflectors & bridges
+Let's use this behaviour to program a truth machine - meaning a program that
+takes a Boolean and prints `0` if it is *false* and otherwise produces an
+infinite stream of `1`s:
+
+    $ cat examples/truth-machine.f
+    $_.@v
+    p.1r<
+    $ functoid -q examples/truth-machine.f F
+    0
+    $ functoid -q examples/truth-machine.f T
+    1
+    1
+    1
+    ⋮
+
+**Explanation:** First the program applies `$` the command-line argument, moves
+on to the next character `_` and this will happen:
+
+- if the argument was *false* the pointer gets set to right, `.` prints the
+  current expression (*false* as an integer is *0*) and aborts with `@`.
+- in the other case it gets set to left and wraps around, follows `v` and `<`,
+  resets the expression with `r`, applies `1`, prints it with `.`, prints a
+  new-line with `p`. And this will continue because it wraps around.
+
+As you probably noticed `_` (and it's the same with `|`) didn't reset the
+current expression, this is helpful because it allows to conditionally do
+something in the case of *0* and otherwise follow a different flow which could
+for example be used as an alternative for the base case of some kind of
+recursion.
 
 
 ## Modifying the source
 
-TODO: write something here
+OK, let's be honest the previous example for a truth machine was kind of boring
+in the sense that this wasn't functional at all. Let us explore the functional
+way of modifying the source at run-time and introduce some other concepts of
+`functoid`, for this we do the same as in the previous example but in case of
+*false* input, we'll simply exit without printing anything:
 
-eg. starting with a simple example: %00"64"f
+    $ cat examples/semi-truth-machine.f
+    #v%"19"0(i[I$"64")f v
+     >r1.p             >>
 
--->
+First the instruction `#` *bridges* the next one, so the program applies `%`
+next.  This function expects 3 arguments, `x` `y` and `c` and once it gets
+evaluated (except inside nested functions) modifies the character at position
+`(x,y)` to `c`: In our case `x` will be 19, `y` will be 0 (that's the ` `
+character between `f` and `v`) and `c` will be whatever the nested expression
+inside the parentheses will be:
+
+This expression first checks with `i` whether the argument `$` is *true* and in
+that case it will evaluate to `[` (*pred* - predecessor) and to `I` (identity)
+otherwise. It then applies 64 to one of these functions, evaluating to 63 for
+*true* and *64* else which corresponds to characters `?` and `@` respectively.
+
+By forcing evaluation of the term with `f` the next character will exit or set
+the direction randomly to either one of the 4 directions. The rest of the
+program follows the same idea as in the previous example.
+
+**Note**: If we wouldn't force evaluation, the modification wouldn't get caught
+and the program would simply follow `v`,`>` and print out `1`s in any case!
 
 
 ## Commands
 
 At the moment there is no shortage of characters and thus no reason not to have
-multiple characters with the same meaning, for example `0` and `F` are the same
-(or `B` and `*`) - this allows programs to be more expressive.
+multiple characters with the same meaning, for example `*` and `B` are the same -
+this allows programs to be more expressive.
 
 This is the full list of all commands that `functoid` currently knows each with
 a description and possibly the lambda term that gets applied to the current
