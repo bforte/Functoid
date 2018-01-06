@@ -16,7 +16,7 @@ import System.IO
 import System.Random hiding (next)
 
 -- Currently used characters:
--- "#$%*+,-.0123456789:;<=>?@ABCFGIKLOSTUVWXY[]^_`fgilnorv|~
+-- "#$%*+,-.0123456789:;<=>?@ABCEFGIKLORSTUVWXY[]^_`fgilnorv|~
 
 
 -- | Evaluate a Functoid program
@@ -87,18 +87,13 @@ evalCmd c = case c of
     step >> accumNumber >>= appExp
   _ | c `elem` "0123456789" -> -- Apply a number literal
         appExp . number $ toNumber c
-    | c `elem` map fst opTable -> -- Apply an expression from opTable
-        appExp $ fromChar c
+    | c `elem` builtins -> -- Apply an expression from opTable
+        appExp $ toExp c
     | otherwise -> -- No-op
         return ()
 
   where appExp :: Exp -> FC ()
         appExp e = exp %= (.$ e)
-
-        fromChar :: Char -> Exp
-        fromChar c
-          | c `elem` map fst opTable = head [ op | (c',op) <- opTable, c' == c]
-          | otherwise = error $ "command " ++ show c ++ " not implemented"
 
         accumNumber :: FC Exp
         accumNumber = number . foldl ((+).(10*)) 0 . filter (>0) <$> go
@@ -124,7 +119,7 @@ getCmd = do
 
 -- | Step the program; move command pointer in the current direction
 step :: FC ()
-step = do checkModifying
+step = do checkAction
           e  <- get
           pos %= next (snd . bounds $ e ^. prog) (dxdy $ e ^. dir)
 
@@ -136,9 +131,9 @@ step = do checkModifying
         dxdy D = ( 1, 0)
 
 
--- | Check if a source code modifying function is evaluated and possibly fire it
-checkModifying :: FC ()
-checkModifying = use exp >>= \case
+-- | Check if an action is evaluated and possibly fire it
+checkAction :: FC ()
+checkAction = use exp >>= \case
   Tri a b c -> case liftM3 (,,) (toNum a) (toNum b) (toChar c) of
                  Just (x,y,c) -> do
                    (m,n) <- snd . bounds <$> use prog
@@ -147,10 +142,13 @@ checkModifying = use exp >>= \case
                    whenM (view verbose) $
                      putErrLn $ "Modify source " ++ show p ++ " -> " ++ show c
                  Nothing -> return ()
+  Lit Exit -> exitProgram
+  Lit Reset -> exp .= id
   _ -> return ()
 
-  where
 
+exitProgram :: FC ()
+exitProgram = pos .= (0,0) >> prog .= array ((0,0),(0,0)) [((0,0),'@')]
 
 id :: Exp
 id = Lam $ Var 1
@@ -160,9 +158,7 @@ whenM b f = b >>= flip when f
 
 putPretty :: Pretty a => a -> FC ()
 putPretty a = do whenM (view clear) (exp .= id)
-                 whenM (view exit) $ do
-                   pos  .= (0,0)
-                   prog .= array ((0,0),(0,0)) [((0,0),'@')]
+                 whenM (view exit) exitProgram
                  case pretty a of
                    "" -> whenM (not <$> view quiet) $
                            putErrLn "error: type mismatch"
@@ -170,6 +166,9 @@ putPretty a = do whenM (view clear) (exp .= id)
 
 putErrLn :: String -> FC ()
 putErrLn = liftIO . hPutStrLn stderr
+
+--dbg :: Show a => a -> FC a
+--dbg a = putErrLn (show a) >> return a
 
 --prog2str :: Prog -> [String]
 --prog2str = map (map snd)

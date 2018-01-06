@@ -213,6 +213,7 @@ to the current function:
 | Character    | Description                          | Lambda term  |
 |:------------:|--------------------------------------|--------------|
 |    `@`       | end execution                        |              |
+|    `E`       | functional version of `@`            | `@`          |
 |    `<`       | set direction left                   |              |
 |    `>`       | set direction right                  |              |
 |    `^`       | set direction up                     |              |
@@ -231,6 +232,7 @@ to the current function:
 |    `"`       | number delimiter                     |              |
 |    `f`       | force evaluation                     |              |
 |    `r`       | replace current expression with id   | set to *λx1* |
+|    `R`       | functional version of `r`            | `r`          |
 |    `%`       | *modify x3 x2 x1* -> set *(x3,x2)* to *x1* | *λλλ[x3,x2,x1]* |
 |              |                                      |              |
 |    `B`       | *B*-combinator                       | *λλλ(x3 (x2 x1))* |
@@ -247,6 +249,7 @@ to the current function:
 |    `T`       | true                                 | *λλx2*       |
 |    `F`       | false                                | *λλx1*       |
 |    `i`       | if *x1* then *x3* else *x2*          | *λλλ(x1 x3 x2)* |
+|    `j`       | if *x2 x1* then *x4* else *x3*       | *λλλλ(x2 x1 x4 x3)* |
 |    `n`       | not                                  | *λ(x1 λλx1 λλx2)* |
 |    `A`       | and                                  | *λλ(x2 x1 x2)* |
 |    `V`       | or                                   | *λλ(x2 x2 x1)* |

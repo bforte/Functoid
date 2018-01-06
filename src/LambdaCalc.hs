@@ -4,16 +4,25 @@
 --    - https://en.wikipedia.org/wiki/De_Bruijn_index
 
 module LambdaCalc
-  ( Exp(..), Pretty, pretty, (.$)
-  , simplify, number, opTable
+  ( Action(..), Exp(..), Pretty, pretty, (.$)
+  , simplify, number, opTable, builtins, toExp
   , toBool, toChar, toNum
   ) where
 
 import Prelude hiding (pred,succ,and,or,not)
 
+-- | Action type to allow functional actions
+data Action = Exit | Reset
+  deriving Eq
+
+instance Show Action where
+  show Exit  = "@"
+  show Reset = "r"
+
 
 -- | Exp type for lambda calculus terms
 data Exp = Var Integer
+         | Lit Action       -- Literal for functional actions
          | Lam Exp
          | Tri Exp Exp Exp  -- Triple (x,y,c) for modifying the source
          | App Exp Exp
@@ -23,10 +32,11 @@ data Exp = Var Integer
 infixr 8 $.
 ($.) = App
 
-λ = Lam
+λ = (iterate (Lam.) id !!)
 
 instance Show Exp where
   show (Var a) = "x" ++ show a
+  show (Lit a) = show a
   show (Lam a@(App _ _)) = "λ(" ++ show a ++ ")"
   show (Lam a) = "λ" ++ show a
   show (Tri a b c) = "[" ++ show a ++ "," ++ show b ++ "," ++ show c ++ "]"
@@ -39,6 +49,7 @@ instance Eq Exp where
   a == b = eq (simplify a) (simplify b)
 
 eq (Var a) (Var b) = a == b
+eq (Lit a) (Lit b) = a == b
 eq (Lam a) (Lam b) = eq a b
 eq (Tri a b c) (Tri d e f) = eq a d && eq b e && eq c f
 eq (App a b) (App c d) = eq a c && eq b d
@@ -102,6 +113,7 @@ simplify e
                   | n == b = a
                   | n <  b = Var $ b-1
                   | otherwise = Var b
+                sub _ _ l@(Lit _) = l
                 sub n a (Lam b) = Lam $ sub (n+1) (incFree 0 a) b
                 sub n a (Tri b c d) = Tri (sub n a b) (sub n a c) (sub n a d)
                 sub n a (App b c) = App (sub n a b) (sub n a c)
@@ -109,6 +121,7 @@ simplify e
                 incFree n (Var a)
                   | n < a = Var $ a+1
                   | otherwise = Var a
+                incFree _ l@(Lit _) = l
                 incFree n (Lam a) = Lam $ incFree (n+1) a
                 incFree n (Tri a b c) = Tri (incFree n a) (incFree n b) (incFree n c)
                 incFree n (App a b) = App (incFree n a) (incFree n b)
@@ -124,8 +137,8 @@ b  = Lam (Lam (Lam $ Var 3 .$ (Var 2 .$ Var 1)))
 c  = Lam (Lam (Lam $ Var 3 .$ Var 1 .$ Var 2))
 i  = Lam (Var 1)
 k  = Lam (Lam $ Var 2)
-_o  = Lam (Var 1 .$ Var 1)   -- ω
-o = o .$ o                   -- Ω
+_o = Lam (Var 1 .$ Var 1)   -- ω
+o  = o .$ o                 -- Ω
 s  = Lam (Lam (Lam $ Var 3 .$ Var 1 .$ (Var 2 .$ Var 1)))
 u  = Lam (Lam (Var 1 .$ (Var 2 .$ Var 2 .$ Var 1)))
 w  = Lam (Lam $ Var 2 .$ Var 1 .$ Var 1)
@@ -133,9 +146,11 @@ y  = Lam (Lam (Var 2 .$ (Var 1 .$ Var 1)) .$ Lam (Var 2 .$ (Var 1 .$ Var 1)))
 
 
 -- | Boolean logic
-true   = Lam (Lam $ Var 2)
-false  = Lam (Lam $ Var 1)
-ifelse = Lam (Lam (Lam $ Var 1 .$ Var 3 .$ Var 1))
+true  = Lam (Lam $ Var 2)
+false = Lam (Lam $ Var 1)
+
+ifelse  = Lam (Lam (Lam $ Var 1 .$ Var 3 .$ Var 2))
+ifelse' = Lam (Lam (Lam (Lam $ Var 2 .$ Var 1 .$ Var 4 .$ Var 3)))
 
 and = Lam (Lam $ Var 2 .$ Var 1 .$ Var 2)
 or  = Lam (Lam $ Var 2 .$ Var 2 .$ Var 1)
@@ -166,9 +181,17 @@ ge = Lam (Lam (App (App (App (App (Var 2) (Lam (Lam (Lam (App (App (App (Var 3) 
 opTable :: [(Char,Exp)]
 opTable =
   [ ('B', b), ('C', c), ('I', i), ('K', k), ('o', _o), ('O', o), ('S', s), ('U', u), ('W', w), ('Y', y)
-  , ('T', true), ('F', false), ('i', ifelse), ('n',not), ('A',and), ('V',or), ('X',xor)
+  , ('T', true), ('F', false), ('i', ifelse), ('j', ifelse'), ('n',not), ('A',and), ('V',or), ('X',xor)
   , (']', succ), ('[', pred)
   , ('+', plus), ('-', sub), ('*', mult), ('`', pow)
   , ('=', eqq), ('L', leq), ('l', le), ('G', geq), ('g', ge), ('Z', iszero)
-  , ('%', modify)
+  , ('%', modify), ('E', Lit Exit), ('R', Lit Reset)
   ]
+
+builtins :: String
+builtins = fst <$> opTable
+
+toExp :: Char -> Exp
+toExp c
+  | c `elem` builtins = head [op | (c',op) <- opTable, c' == c]
+  | otherwise = error $ "command " ++ show c ++ " not found.."

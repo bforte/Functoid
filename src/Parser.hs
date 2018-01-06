@@ -34,12 +34,14 @@ inputP = expP <* eof
         atomP =  varP
              <|> lamP
              <|> numP
+             <|> builtinP
              <|> parens expP
         appP  = many1 space *> return App
 
         varP = Var <$> (char 'x' *> intP)
         lamP = Lam <$> (oneOf "λ\\" *> atomP)
         numP = number <$> intP
+        builtinP = toExp <$> oneOf builtins
 
 
 intP :: Parser Integer
