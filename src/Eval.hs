@@ -81,11 +81,15 @@ evalCmd c = case c of
     step
   'r' -> -- Replace current expression with id
     exp .= id
-  'l' -> -- Print newline
+  'p' -> -- Print newline
     putPretty "\n"
   '"' -> -- Accumulate number & apply it
     step >> accumNumber >>= appExp
-  _ | c `elem` "0123456789" -> -- Apply a number literal
+  '(' -> -- Collect functions to compose and apply it to expression
+        step >> accumFuncs c >>= appExp
+  ')' -> -- Collect functions to compose and apply expression to it
+        step >> accumFuncs c >>= (exp%=).(.$)
+  _ | c `elem` digits -> -- Apply a number literal
         appExp . number $ toNumber c
     | c `elem` builtins -> -- Apply an expression from opTable
         appExp $ toExp c
@@ -96,16 +100,39 @@ evalCmd c = case c of
         appExp e = exp %= (.$ e)
 
         accumNumber :: FC Exp
-        accumNumber = number . foldl ((+).(10*)) 0 . filter (>0) <$> go
+        accumNumber = number . foldl ((+).(10*)) 0 <$> go
           where go = getCmd >>= \case
                        '"'                  -> return []
-                       c | c `elem` "<>^v@" -> evalCmd c >> (-1:) <$> go
+                       c | c `elem` "<>^v"  -> evalCmd c >> step >> go
+                         | c == '@'         -> exitProgram >> return []
                          | otherwise        -> step >> (toNumber c :) <$> go
 
         toNumber :: Char -> Integer
         toNumber c
-          | c `elem` "0123456789" = fromIntegral $ fromEnum c - 48
+          | c `elem` digits = fromIntegral $ fromEnum c - 48
           | otherwise = fromIntegral $ fromEnum c
+
+        digits :: [Char]
+        digits = "0123456789"
+
+        accumFuncs :: Char -> FC Exp
+        accumFuncs p = go id
+          where go f = getCmd >>= \case
+                         '"' -> do a <- step >> accumNumber
+                                   go (f .$ a)
+                         c | c `elem` "<>^v"   -> evalCmd c >> step >> go f
+                           | c `elem` digits   -> step >> go (f .$ number (toNumber c))
+                           | c == '@'          -> exitProgram >> return f
+                           | c == close p      -> return f
+                           | c == '('          -> do g <- step >> accumFuncs c
+                                                     step >> go (f .$ g)
+                           | c == ')'          -> do g <- step >> accumFuncs c
+                                                     step >> go (g .$ f)
+                           | c `elem` builtins -> step >> go (f .$ toExp c)
+                           | otherwise         -> step >> go  f
+
+                close c | c == '('  = ')'
+                        | otherwise = '('
 
 
 -- | Get the current command that gets executed

@@ -4,6 +4,8 @@ One instruction pointer, a direction, a stack for the command-line arguments fro
 which you can only pop, a mutable 2D source code and a single expression that you
 can apply new arguments to.
 
+You can find the list of all commands [here](#commands).
+
 
 ## Introduction
 
@@ -11,13 +13,14 @@ There's no reason to give a formal definition for the [lambda
 calculus][LC-wiki] here, instead I will showcase some of the internal
 definitions that `functoid` uses and how they can be used to do arithmetic. If
 you're not familiar with DeBruijn notation, you should probably check it out
-(for example [here][DB-wiki]) because this explanation will make use of it.
+(for example [here][DB-wiki]) because this explanation will make use of it -
+however for clarity *xN* will be used instead of *N*.
 
 Internally `functoid` has no types to represent booleans, numbers, characters
 or even strings. Any expression is defined in terms of lambda terms, please
-refer to the *Commands* section for how logic is defined. Characters are just
-another representation of integers (modulo 128 and converted to ASCII), numbers
-are defined as Church numerals:
+refer to the [*Commands*](#commands) section for how logic is defined.
+Characters are just another representation of integers (modulo 128 and
+converted to ASCII), numbers are defined as Church numerals:
 
 - Zero is: *λλx1*
 - The successor function is: λλλ(x2 (x3 x2 x1))
@@ -69,8 +72,8 @@ Final expression: λλ(x2 x1)    [Church numeral: 1]
 ```
 
 At the end of the program the current function is printed to *stderr* and if it
-evaluates to a Boolean (see *Commands* for the definition used) or Church
-numeral that will be displayed.
+evaluates to a Boolean (see [*Commands*](#commands) for the definition used) or
+Church numeral that will be displayed.
 
 Of course you can take user-input as well: When the interpreter is invoked all
 command-line arguments get parsed (you can input either lambda-terms or
@@ -124,7 +127,7 @@ $ cat lambda-repl.f
 This demonstrates how user input (either `~` or by command-line arguments) are
 parsed and for the first time we see how the pointer simply wraps around
 whenever it would move out of the source code. The character `~` asks the user
-for input (without printing to the screen), parses it (you can either use `\`
+for input (without printing to the screen), parses it* (you can either use `\`
 or `λ` as lambda) and applies it to the current thunk:
 
 For clarity pressing <kbd>Enter</kbd> is highlighted with `⏎`:
@@ -156,6 +159,8 @@ $ functoid -n lambda-repl.f
 λλ(x2 (x2 (x2 x1)))
 ^C
 ```
+
+<sub>* It allows all commands that define an expression, eg. `1`,`T`,`S` etc.</sub>
 
 
 ## Lazyness
@@ -205,9 +210,13 @@ eg. starting with a simple example: %00"64"f
 
 ## Commands
 
-This is the full list of all commands that `functoid` currently knows
-each with a description and possibly the lambda term that gets applied
-to the current function:
+At the moment there is no shortage of characters and thus no reason not to have
+multiple characters with the same meaning, for example `0` and `F` are the same
+(or `B` and `*`) - this allows programs to be more expressive.
+
+This is the full list of all commands that `functoid` currently knows each with
+a description and possibly the lambda term that gets applied to the current
+function.
 
 
 | Character    | Description                          | Lambda term  |
@@ -220,20 +229,22 @@ to the current function:
 |    `v`       | set direction down                   |              |
 |    `?`       | set random direction                 |              |
 |    `_`       | if term is 0 -> set direction right; else left | |
-|    `\|`       | if term is 0 -> set direction down; else up    | |
+|    `\|`      | if term is 0 -> set direction down; else up    | |
+|    `#`       | jump instruction                     |              |
 |    `$`       | pop & apply argument                 |              |
 |    `~`       | ask user for input & apply *         |              |
 |    `:`       | output value current lambda term     |              |
 |    `;`       | output value as Boolean              |              |
 |    `,`       | output value as ASCII (mod 128) char |              |
 |    `.`       | output value as number               |              |
-|    `l`       | print newline                        |              |
-|    `#`       | jump instruction                     |              |
-|    `"`       | number delimiter                     |              |
+|    `p`       | print newline                        |              |
 |    `f`       | force evaluation                     |              |
 |    `r`       | replace current expression with id   | set to *λx1* |
 |    `R`       | functional version of `r`            | `r`          |
 |    `%`       | *modify x3 x2 x1* -> set *(x3,x2)* to *x1* | *λλλ[x3,x2,x1]* |
+|    `"`       | number delimiter                     |              |
+|   `(…)`      | apply *…* to current term            |              |
+|   `)…(`      | apply current term to *…*            |              |
 |              |                                      |              |
 |    `B`       | *B*-combinator                       | *λλλ(x3 (x2 x1))* |
 |    `C`       | *C*-combinator                       | *λλλ(x3 x1 x2)* |
@@ -249,7 +260,6 @@ to the current function:
 |    `T`       | true                                 | *λλx2*       |
 |    `F`       | false                                | *λλx1*       |
 |    `i`       | if *x1* then *x3* else *x2*          | *λλλ(x1 x3 x2)* |
-|    `j`       | if *x2 x1* then *x4* else *x3*       | *λλλλ(x2 x1 x4 x3)* |
 |    `n`       | not                                  | *λ(x1 λλx1 λλx2)* |
 |    `A`       | and                                  | *λλ(x2 x1 x2)* |
 |    `V`       | or                                   | *λλ(x2 x2 x1)* |
@@ -269,7 +279,7 @@ to the current function:
 |    `g`       | ge                                   | *λλ(x2 λλλ(x3 λλ(x1 (x2 x4)) λx2 λx1) λλ(x2 (x3 x2 x1)) λλλx1 λλx2)* |
 |    `Z`       | is zero                              | λ(x1 λλλx1 λλx2) |
 
-<sub>* see the section *Lambda calculus REPL* on how inputs are read </sub>
+<sub>* see the section [*Lambda calculus REPL*](#lambda-calculus-repl) on how inputs are read </sub>
 
 <sub>** *sub a b* with *a < b* will result in *0* </sub>
 

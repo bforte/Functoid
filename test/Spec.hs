@@ -98,6 +98,3 @@ ski_bckw = [ t | (failed, t) <-
 
 true   = toExp 'T'
 false  = toExp 'F'
-
-toExp :: Char -> Exp
-toExp c = head [e | (c',e) <- opTable, c' == c]

@@ -150,7 +150,6 @@ true  = Lam (Lam $ Var 2)
 false = Lam (Lam $ Var 1)
 
 ifelse  = Lam (Lam (Lam $ Var 1 .$ Var 3 .$ Var 2))
-ifelse' = Lam (Lam (Lam (Lam $ Var 2 .$ Var 1 .$ Var 4 .$ Var 3)))
 
 and = Lam (Lam $ Var 2 .$ Var 1 .$ Var 2)
 or  = Lam (Lam $ Var 2 .$ Var 2 .$ Var 1)
@@ -181,7 +180,7 @@ ge = Lam (Lam (App (App (App (App (Var 2) (Lam (Lam (Lam (App (App (App (Var 3) 
 opTable :: [(Char,Exp)]
 opTable =
   [ ('B', b), ('C', c), ('I', i), ('K', k), ('o', _o), ('O', o), ('S', s), ('U', u), ('W', w), ('Y', y)
-  , ('T', true), ('F', false), ('i', ifelse), ('j', ifelse'), ('n',not), ('A',and), ('V',or), ('X',xor)
+  , ('T', true), ('F', false), ('i', ifelse), ('n',not), ('A',and), ('V',or), ('X',xor)
   , (']', succ), ('[', pred)
   , ('+', plus), ('-', sub), ('*', mult), ('`', pow)
   , ('=', eqq), ('L', leq), ('l', le), ('G', geq), ('g', ge), ('Z', iszero)
