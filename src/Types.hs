@@ -9,9 +9,11 @@ module Types
 import LambdaCalc
 
 import Data.Array
-import Control.Lens
 import Control.Monad.Reader
 import Control.Monad.State.Strict
+import Lens.Micro
+import Lens.Micro.Mtl
+import Lens.Micro.TH
 
 
 -- | Monad transformer for Functoid computations
