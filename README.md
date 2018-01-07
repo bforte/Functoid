@@ -315,7 +315,9 @@ function.
 |    `U`       | *U*-combinator                       | *λλ(x1 (x2 x2 x1))* |
 |    `W`       | *W*-combinator                       | *λλ(x2 x1 x1)* |
 |    `Y`       | *Y*-combinator                       | *λ(λ(x2 (x1 x1)) λ(x2 (x1 x1)))* |
-|    `b`       | composition for ternary              | *λλλλλ(x5 x4 x3 (x2 x1))* |
+|    `p`       | compose both of binary               | *λλλλ(x2 (x1 x4) (x1 x3))* |
+|    `q`       | compose each of binary               | *λλλλλ(x3 (x2 x5) (x1 x4))* |
+|    `b`       | compose last of ternary              | *λλλλλ(x5 x4 x3 (x2 x1))* |
 |    `h`       | 1 argument recursion                 | *λλλλλ(x2 x4 (x3 x4) (x1 x5 x4))* |
 |    `t`       | 2 argument recursion                 | *λλλλλλ(x2 x5 x4 (x3 x5 x4) (x1 x6 x5 x4))* |
 |              |                                      |              |

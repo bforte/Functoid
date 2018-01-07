@@ -17,8 +17,8 @@ import System.Random hiding (next)
 
 
 -- Characters [\33..\126] by usage:
---   "#$%& ()*+,-. 0123456789:;<=>?@ABC EFG I KL  O  RSTUVWXYZ[ ]^_` b   fghi  l n   r t v     | ~
---  !     '       /                    D   H J  MN PQ          \    a cde    jk m opq s u wxyz{ }
+--   "#$%& ()*+,-. 0123456789:;<=>?@ABC EFG I KL  O  RSTUVWXYZ[ ]^_` b   fghi  l n pqr t v     | ~
+--  !     '       /                    D   H J  MN PQ          \    a cde    jk m o   s u wxyz{ }
 
 
 -- | Evaluate a Functoid program
