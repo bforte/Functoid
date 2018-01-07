@@ -137,8 +137,7 @@ b  = Lam (Lam (Lam $ Var 3 .$ (Var 2 .$ Var 1)))
 c  = Lam (Lam (Lam $ Var 3 .$ Var 1 .$ Var 2))
 i  = Lam (Var 1)
 k  = Lam (Lam $ Var 2)
-_o = Lam (Var 1 .$ Var 1)   -- ω
-o  = o .$ o                 -- Ω
+o = Lam (Var 1 .$ Var 1)   -- ω
 s  = Lam (Lam (Lam $ Var 3 .$ Var 1 .$ (Var 2 .$ Var 1)))
 u  = Lam (Lam (Var 1 .$ (Var 2 .$ Var 2 .$ Var 1)))
 w  = Lam (Lam $ Var 2 .$ Var 1 .$ Var 1)
@@ -176,15 +175,22 @@ geq = Lam (Lam (App (App (App (App (Var 2) (Lam (Lam (Lam (App (App (App (Var 3)
 ge = Lam (Lam (App (App (App (App (Var 2) (Lam (Lam (Lam (App (App (App (Var 3) (Lam (Lam (App (Var 1) (App (Var 2) (Var 4)))))) (Lam (Var 2))) (Lam (Var 1))))))) (Lam (Lam (App (Var 2) (App (App (Var 3) (Var 2)) (Var 1)))))) (Lam (Lam (Lam (Var 1))))) (Lam (Lam (Var 2)))))
 
 
+-- | Other stuff
+rec1 = λ 5 (Var 2 .$ Var 4 .$ (Var 3 .$ Var 4) $. Var 1 .$ Var 5 .$ Var 4)
+rec2 = λ 6 (Var 2 .$ Var 5 .$ Var 4 .$ (Var 3 .$ Var 5 .$ Var 4) $. Var 1 .$ Var 6 .$ Var 5 .$ Var 4)
+_b = λ 5 $ Var 5 .$ Var 4 .$ Var 3 $. Var 2 .$ Var 1
+
+
 -- | Used to convert from a character in the source to Exps
 opTable :: [(Char,Exp)]
 opTable =
-  [ ('B', b), ('C', c), ('I', i), ('K', k), ('o', _o), ('O', o), ('S', s), ('U', u), ('W', w), ('Y', y)
+  [ ('B', b), ('C', c), ('I', i), ('K', k), ('O', o), ('S', s), ('U', u), ('W', w), ('Y', y)
   , ('T', true), ('F', false), ('i', ifelse), ('n',not), ('A',and), ('V',or), ('X',xor)
   , (']', succ), ('[', pred)
   , ('+', plus), ('-', sub), ('*', mult), ('`', pow)
   , ('=', eqq), ('L', leq), ('l', le), ('G', geq), ('g', ge), ('Z', iszero)
   , ('%', modify), ('E', Lit Exit), ('R', Lit Reset)
+  , ('h', rec1), ('t', rec2), ('b',_b)
   ]
 
 builtins :: String

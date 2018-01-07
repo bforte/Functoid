@@ -165,6 +165,7 @@ $ functoid -n lambda-repl.f
 <sub>* It allows all commands that define an expression, eg. `1`,`T`,`S` etc.</sub>
 
 
+<!-- TODO: adjust example (`O` is now *λ(x1 x1)*)
 ## Laziness
 
 By default `functoid` is lazy which means it won't evaluate (*β*-reduce) the
@@ -192,6 +193,7 @@ it really needs to. In fact try running the first version with the `-q` flag
 and see what happens. However if you don't like this behaviour you can force
 evaluation at each step with the `-f` flag - meaning `functoid -qfe "Or@"`
 wont' terminate.
+-->
 
 
 ## Control flow
@@ -308,12 +310,14 @@ function.
 |    `C`       | *C*-combinator                       | *λλλ(x3 x1 x2)* |
 |    `I`       | *I*-combinator                       | *λx1*        |
 |    `K`       | *K*-combinator                       | *λλx2*       |
-|    `o`       | *ω*-combinator                       | *λ(x1 x1)*     |
-|    `O`       | *Ω*-combinator                       | *λ(x1 x1) λ(x1 x1)* |
+|    `O`       | *ω*-combinator                       | *λ(x1 x1)*     |
 |    `S`       | *S*-combinator                       | *λλλ(x3 x1 (x2 x1))* |
 |    `U`       | *U*-combinator                       | *λλ(x1 (x2 x2 x1))* |
 |    `W`       | *W*-combinator                       | *λλ(x2 x1 x1)* |
 |    `Y`       | *Y*-combinator                       | *λ(λ(x2 (x1 x1)) λ(x2 (x1 x1)))* |
+|    `b`       | composition for ternary              | *λλλλλ(x5 x4 x3 (x2 x1))* |
+|    `h`       | 1 argument recursion                 | *λλλλλ(x2 x4 (x3 x4) (x1 x5 x4))* |
+|    `t`       | 2 argument recursion                 | *λλλλλλ(x2 x5 x4 (x3 x5 x4) (x1 x6 x5 x4))* |
 |              |                                      |              |
 |    `T`       | true                                 | *λλx2*       |
 |    `F`       | false                                | *λλx1*       |
