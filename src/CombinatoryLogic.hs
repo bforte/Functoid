@@ -55,7 +55,7 @@ free = not . notFree
 
 -- | Check if (Var 1) is not free in expression
 notFree :: Exp -> Bool
-notFree a = go 1 a
+notFree = go 1
   where go n (Var i) = i /= n
         go n (Lam a) = go (n+1) a
         go n (App a b) = go n a && go n b
@@ -63,7 +63,7 @@ notFree a = go 1 a
 
 -- | Decrement indices of variables referring to outer lambdas
 unLambda :: Exp -> Exp
-unLambda exp = go 1 exp
+unLambda = go 1
   where go n v@(Var i)
           | n <= i    = Var (i-1)
           | otherwise = v

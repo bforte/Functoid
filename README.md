@@ -336,36 +336,37 @@ rec f x
 even = fix rec
 ```
 
-Because this can get quite verbose really fast `functoid` currently provides
-two helper functions `h` and `t` for defining functions like `rec`, here's a
-high-level definition of `h`:
+Because this can get quite verbose really fast and recursion is a very
+important concept `functoid` currently provides three helper functions `x`,`y`
+and `z` for defining functions like `rec`, here's a high-level definition of
+`x`:
 
 ```haskell
-h baseP baseF recF f x
+functoid_x baseP baseF recF f x
   | baseP x   = baseF x
   | otherwise = recF f x
 ```
 
-So if we apply `baseP`,`baseF` and `recF` to the `h` combinator we get a
+So if we apply `baseP`,`baseF` and `recF` to the `x` combinator we get a
 exactly a function that we can use with `Y` and `even` would simply become:
 
 ```haskell
-even = fix $ h (\x-> 1 >= x) (==0) (\f x-> f (x - 2))
+even = fix $ functoid_x (\x-> 1 >= x) (\x-> x == 0) (\f x-> f (x - 2))
 ```
 
 In `functoid` the base predicate could be `G1`, the base function is simply `Z`
 and the recursive function `CB(2[)` (or `BBCB2[` without parentheses) which
-gives us the expression `h(G1)Z(BBCB2[)` for `rec`.  Now we simply need to
+gives us the expression `x(G1)Z(BBCB2[)` for `rec`.  Now we simply need to
 apply this to `Y` and have a function to check if a number is even (we can drop
 the `()` around `G1` by using `B` once again):
 
-    $ functoid -qe "Y(BhG1Z(BBCB2[))$;@" 4
+    $ functoid -qe "Y(BxG1Z(BBCB2[))$;@" 4
     True
-    $ functoid -qe "Y(BhG1Z(BBCB2[))$;@" 23
+    $ functoid -qe "Y(BxG1Z(BBCB2[))$;@" 23
     False
 
-**Note:** The function `t` works very similar to `h` except that the three
-combinators `baseP`,`baseF` and `recF` all expect two arguments.
+**Note:** The functions `y` and `z` work very similar to `x` except that their
+combinators `baseP`,`baseF` and `recF` all expect additional arguments.
 
 
 ## Commands
@@ -418,8 +419,9 @@ function.
 |    `p`       | compose both of binary               | *λλλλ(x2 (x1 x4) (x1 x3))* |
 |    `q`       | compose each of binary               | *λλλλλ(x3 (x2 x5) (x1 x4))* |
 |    `b`       | compose last of ternary              | *λλλλλ(x5 x4 x3 (x2 x1))* |
-|    `h`       | 1 argument recursion                 | *λλλλλ(x5 x1 (x4 x1) (x3 x2 x1))* |
-|    `t`       | 2 argument recursion                 | *λλλλλλ(x6 x2 x1 (x5 x2 x1) (x4 x3 x2 x1))* |
+|    `x`       | 1 argument recursion                 | *λλλλλ(x5 x1 (x4 x1) (x3 x2 x1))* |
+|    `y`       | 2 argument recursion                 | *λλλλλλ(x6 x2 x1 (x5 x2 x1) (x4 x3 x2 x1))* |
+|    `z`       | 3 argument recursion                 | *λλλλλλλ(x7 x3 x2 x1 (x6 x3 x2 x1) (x5 x4 x3 x2 x1))* |
 |              |                                      |              |
 |    `T`       | true                                 | *λλx2*       |
 |    `F`       | false                                | *λλx1*       |
@@ -433,9 +435,9 @@ function.
 |    `]`       | succ                                 | *λλλ(x2 (x3 x2 x1))* |
 |    `[`       | pred                                 | *λλλ(x3 λλ(x1 (x2 x4)) λx2 λx1)* |
 |    `+`       | plus                                 | *λλλλ(x4 x2 (x3 x2 x1))* |
-|    `-`       | sub **                                | *λλ(x1 λλλ(x3 λλ(x1 (x2 x4)) λx2 λx1) x2)* |
+|    `-`       | sub **                               | *λλ(x1 λλλ(x3 λλ(x1 (x2 x4)) λx2 λx1) x2)* |
 |    `*`       | mult                                 | *λλλ(x3 (x2 x1))* |
-|<code>`</code>| pow ***                               | *λλ(x1 x2)*    |
+|<code>`</code>| pow ***                              | *λλ(x1 x2)*    |
 |    `=`       | equality (for Church numerals)       | *λλ(x1 λλλ(x3 λλ(x1 (x2 x4)) λx2 λx1) x2 λλλx1 λλx2 (x2 λλλ(x3 λλ(x1 (x2 x4)) λx2 λx1) x1 λλλx1 λλx2) (x1 λλλ(x3 λλ(x1 (x2 x4)) λx2 λx1) x2 λλλx1 λλx2))* |
 |    `L`       | leq                                  | *λλ(x1 λλλ(x3 λλ(x1 (x2 x4)) λx2 λx1) x2 λλλx1 λλx2)* |
 |    `l`       | le                                   | *λλ(x1 λλλ(x3 λλ(x1 (x2 x4)) λx2 λx1) λλ(x2 (x4 x2 x1)) λλλx1 λλx2)* |

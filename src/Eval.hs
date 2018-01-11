@@ -17,8 +17,8 @@ import System.Random hiding (next)
 
 
 -- Characters [\33..\126] by usage:
---   "#$%& ()*+,-. 0123456789:;<=>?@ABC EFG I KL  O  RSTUVWXYZ[ ]^_` b   fghi  l n pqr t v     | ~
---  !     '       /                    D   H J  MN PQ          \    a cde    jk m o   s u wxyz{ }
+--  "#$%  ()*+,-. 0123456789:;<=>?@ABC EFG I KL  O  RSTUVWXYZ[ ]^_` b   fg i  l n pqr   v xyz | ~
+-- !    &'       /                    D   H J  MN PQ          \    a cde  h jk m o   stu w   { }
 
 
 -- | Evaluate a Functoid program
@@ -151,8 +151,7 @@ step = step' True
 
 -- | Step the program; but only check for actions if flag set
 step' :: Bool -> FC ()
-step' c = do if c then checkAction
-                  else return ()
+step' c = do when c checkAction
              e  <- get
              pos %= next (snd . bounds $ e ^. prog) (dydx $ e ^. dir)
 
