@@ -416,8 +416,8 @@ function.
 |    `U`       | *U*-combinator                       | *λλ(x1 (x2 x2 x1))* |
 |    `W`       | *W*-combinator                       | *λλ(x2 x1 x1)* |
 |    `Y`       | *Y*-combinator                       | *λ(λ(x2 (x1 x1)) λ(x2 (x1 x1)))* |
-|    `p`       | compose both of binary               | *λλλλ(x2 (x1 x4) (x1 x3))* |
-|    `q`       | compose each of binary               | *λλλλλ(x3 (x2 x5) (x1 x4))* |
+|    `p`       | compose both of binary               | *λλλλ(x4 (x3 x2) (x3 x1))* |
+|    `q`       | compose each of binary               | *λλλλλ(x5 (x4 x2) (x3 x1))* |
 |    `b`       | compose last of ternary              | *λλλλλ(x5 x4 x3 (x2 x1))* |
 |    `x`       | 1 argument recursion                 | *λλλλλ(x5 x1 (x4 x1) (x3 x2 x1))* |
 |    `y`       | 2 argument recursion                 | *λλλλλλ(x6 x2 x1 (x5 x2 x1) (x4 x3 x2 x1))* |
