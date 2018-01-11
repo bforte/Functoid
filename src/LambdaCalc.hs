@@ -176,8 +176,8 @@ ge = Lam (Lam (App (App (App (App (Var 2) (Lam (Lam (Lam (App (App (App (Var 3) 
 
 
 -- | Other stuff
-rec1 = λ 5 (Var 2 .$ Var 4 .$ (Var 3 .$ Var 4) $. Var 1 .$ Var 5 .$ Var 4)
-rec2 = λ 6 (Var 2 .$ Var 5 .$ Var 4 .$ (Var 3 .$ Var 5 .$ Var 4) $. Var 1 .$ Var 6 .$ Var 5 .$ Var 4)
+rec1 = λ 5 ( Var 5 .$ Var 1 .$ (Var 4 .$ Var 1) $. Var 3 .$ Var 2 .$ Var 1 )
+rec2 = λ 6 ( Var 6 .$ Var 2 .$ Var 1 .$ (Var 5 .$ Var 2 .$ Var 1) $. Var 4 .$ Var 3 .$ Var 2 .$ Var 1 )
 c2 = λ 4 (Var 2 .$ (Var 1 .$ Var 4) $. Var 1 .$ Var 3)
 c3 = λ 5 (Var 3 .$ (Var 2 .$ Var 5) $. Var 1 .$ Var 4)
 _b = λ 5 $ Var 5 .$ Var 4 .$ Var 3 $. Var 2 .$ Var 1

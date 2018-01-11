@@ -4,7 +4,52 @@ One instruction pointer, a direction, a stack for the command-line arguments fro
 which you can only pop, a mutable 2D source code and a single expression that you
 can apply new arguments to.
 
+In case you don't have a Haskell compiler, you can try `functoid` online at
+[Try it online!][functoid-tio]
+which is provided by [DennisMitchell](https://github.com/DennisMitchell).
+
+
 You can find the list of all commands [here](#commands).
+
+
+## Interpreter
+
+    usage: functoid [OPTIONS] [-e expr | -t expr | file] [INPUTS]
+      -e  --expression  use command-line argument as source
+      -f  --force       always force evaluation
+      -n  --no-clear    don't clear the current lambda term when printing
+      -v  --verbose     print steps taken
+      -q  --quiet       don't print the final lambda term
+      -t  --transform   transform lambda expression to SKIBCW
+      -x  --exit        automatically exit on first print statement
+
+
+## Installation
+
+Make sure you've got either `cabal` or `stack` installed, then clone the repo:
+
+```
+$ git clone git://github.com/bforte/Functoid.git
+$ cabal install
+```
+
+
+#### If you're using `cabal`
+
+Simply install it:
+
+```
+$ cabal install
+```
+
+#### If you're using `stack`
+
+Setup the environment and then install it:
+
+```
+$ stack setup
+$ stack install
+```
 
 
 ## Introduction
@@ -165,35 +210,34 @@ $ functoid -n lambda-repl.f
 <sub>* It allows all commands that define an expression, eg. `1`,`T`,`S` etc.</sub>
 
 
-<!-- TODO: adjust example (`O` is now *λ(x1 x1)*)
 ## Laziness
 
 By default `functoid` is lazy which means it won't evaluate (*β*-reduce) the
-sometimes huge expression which is good. For example if we'd try to evaluate
-the *Ω*-combinator we would never be done, try running this:
+sometimes huge expression which is good. Not only would it be very inefficient
+but some expressions don't simplify to a stable normal form. Let's try this:
 
 ```
-functoid -e "O@"
+functoid -e "WWW@"
 
 Final expression: ^C
 ```
 
 It won't terminate and you'll have to kill it with <kbd>Ctrl</kbd>+<kbd>C</kbd>
 (that's the `^C` you can see). The character `r` will override the current
-expression with the identity function, now let's try the following:
+expression with the identity function, so let's do that before terminating and
+see what happens:
 
 ```
-functoid -e "Or@"
+functoid -e "WWWr@"
 
 Final expression: λx1
 ```
 
 This time it terminates, that's because `functoid` only ever evaluates stuff if
-it really needs to. In fact try running the first version with the `-q` flag
-and see what happens. However if you don't like this behaviour you can force
-evaluation at each step with the `-f` flag - meaning `functoid -qfe "Or@"`
+it really needs to (in fact try running the first version with the `-q` flag
+and see what happens). However if you don't like this behaviour you can force
+evaluation at each step with the `-f` flag - meaning `functoid -qfe "WWWr@"`
 wont' terminate.
--->
 
 
 ## Control flow
@@ -268,6 +312,62 @@ program follows the same idea as in the previous example.
 and the program would simply follow `v`,`>` and print out `1`s in any case!
 
 
+## Recursion combinators
+
+Now suppose we want to check if a Church numeral is even or odd, in a
+high-level language this could be described by a recursive function like this:
+
+```haskell
+even x
+  | 1 >= x    = 0 == x
+  | otherwise = even (x - 2)
+```
+
+But this requires a named function such that it is able to recursively call
+itself, the standard way to solve in lambda calculus is to use the
+[*Y*-combinator][y-combinator] (in Haskell this is `fix`) and rewrite `even` as
+follows:
+
+```haskell
+rec f x
+  | 1 >= x    = 0 == x
+  | otherwise = f (x - 2)
+
+even = fix rec
+```
+
+Because this can get quite verbose really fast `functoid` currently provides
+two helper functions `h` and `t` for defining functions like `rec`, here's a
+high-level definition of `h`:
+
+```haskell
+h baseP baseF recF f x
+  | baseP x   = baseF x
+  | otherwise = recF f x
+```
+
+So if we apply `baseP`,`baseF` and `recF` to the `h` combinator we get a
+exactly a function that we can use with `Y` and `even` would simply become:
+
+```haskell
+even = fix $ h (\x-> 1 >= x) (==0) (\f x-> f (x - 2))
+```
+
+In `functoid` the base predicate could be `G1`, the base function is simply `Z`
+and the recursive function `CB(2[)` (or `BBCB2[` without parentheses) which
+gives us the expression `h(G1)Z(BBCB2[)` for `rec`.  Now we simply need to
+apply this to `Y` and have a function to check if a number is even (we can drop
+the `()` around `G1` by using `B` once again):
+
+    $ functoid -qe "Y(BhG1Z(BBCB2[))$;@" 4
+    True
+    $ functoid -qe "Y(BhG1Z(BBCB2[))$;@" 23
+    False
+
+**Note:** The function `t` works very similar to `h` except that the three
+combinators `baseP`,`baseF` and `recF` all expect two arguments.
+
+
 ## Commands
 
 At the moment there is no shortage of characters and thus no reason not to have
@@ -318,8 +418,8 @@ function.
 |    `p`       | compose both of binary               | *λλλλ(x2 (x1 x4) (x1 x3))* |
 |    `q`       | compose each of binary               | *λλλλλ(x3 (x2 x5) (x1 x4))* |
 |    `b`       | compose last of ternary              | *λλλλλ(x5 x4 x3 (x2 x1))* |
-|    `h`       | 1 argument recursion                 | *λλλλλ(x2 x4 (x3 x4) (x1 x5 x4))* |
-|    `t`       | 2 argument recursion                 | *λλλλλλ(x2 x5 x4 (x3 x5 x4) (x1 x6 x5 x4))* |
+|    `h`       | 1 argument recursion                 | *λλλλλ(x5 x1 (x4 x1) (x3 x2 x1))* |
+|    `t`       | 2 argument recursion                 | *λλλλλλ(x6 x2 x1 (x5 x2 x1) (x4 x3 x2 x1))* |
 |              |                                      |              |
 |    `T`       | true                                 | *λλx2*       |
 |    `F`       | false                                | *λλx1*       |
@@ -350,32 +450,8 @@ function.
 <sub>*** *pow a b* only works for *a,b > 0* </sub>
 
 
-## Installation
 
-Make sure you've got either `cabal` or `stack` installed, then clone the repo:
-
-```
-$ git clone git://github.com/bforte/Functoid.git
-```
-
-
-### If you're using `cabal`
-
-Simply install it:
-
-```
-$ cabal install
-```
-
-### If you're using `stack`
-
-Setup the environment and then install it:
-
-```
-$ stack setup
-$ stack install
-```
-
-
+  [functoid-tio]: https://tio.run/##SyvNSy7Jz0z5/1/JQ0lHKRWIc6A4H4hBUAGIw6H8IqhcChArKuk4/P8PAA
   [LC-wiki]: https://en.wikipedia.org/wiki/Lambda_calculus_definition
   [DB-wiki]: https://en.wikipedia.org/wiki/De_Bruijn_index
+  [y-combinator]: https://en.wikipedia.org/wiki/Y_combinator

@@ -1,9 +1,11 @@
 
-module Parser (parseSrc, parseInput) where
+module Parser (parseSrc, parseInput, parseExp) where
 
+import qualified CombinatoryLogic as CL
 import LambdaCalc
 import Types
 
+import Control.Arrow
 import Data.Array
 import Data.List
 import Text.Parsec
@@ -22,27 +24,32 @@ parseSrc str = array ((0,0),(m,n)) $ concat
 
 type Parser = Parsec String ()
 
--- | Parse a string to lambda expression
-parseInput :: String -> Either ParseError Exp
-parseInput = parse inputP "input" . trim
-  where trim = dropWhile (==' ') . dropWhileEnd (==' ')
+-- | Parse a lambda expression; allowing Church numerals and builtins
+parseInput :: String -> Either String Exp
+parseInput = left show . parse (mkParser App Lam Var ps) "input" . trim
+  where ps = [number <$> intP, toExp <$> oneOf builtins]
 
--- | Parse DeBuijn style lambda expressions; numbers are treated as Church numerals
-inputP :: Parser Exp
-inputP = expP <* eof
+-- | Parse a lambda expression; allowing function literals & SKIBCW combinators
+parseExp :: String -> Either String CL.Exp
+parseExp = left show . parse (mkParser CL.App CL.Lam CL.Var ps) "command-line" . trim
+  where ps = (CL.Func <$> (char 'F' *> intP)) : map clP [CL.S,CL.K,CL.I,CL.B,CL.C,CL.W]
+        clP c = char (head $ show c) *> return c :: Parser CL.Exp
+
+-- | Generate an expression parser from constructors and atomic parsers
+mkParser :: (a -> a -> a) -> (a -> a) -> (Integer -> a) -> [Parser a] -> Parser a
+mkParser app lam var ps = expP <* eof
   where expP  = spaced $ buildExpressionParser [[Infix appP AssocLeft]] atomP
         atomP =  varP
              <|> lamP
-             <|> numP
-             <|> builtinP
+             <|> choice ps
              <|> parens expP
-        appP  = many1 space *> return App
+        appP = many1 space *> return app
+        varP = var <$> (char 'x' *> intP)
+        lamP = lam <$> (oneOf "λ\\" *> atomP)
 
-        varP = Var <$> (char 'x' *> intP)
-        lamP = Lam <$> (oneOf "λ\\" *> atomP)
-        numP = number <$> intP
-        builtinP = toExp <$> oneOf builtins
 
+trim :: String -> String
+trim = dropWhile (==' ') . dropWhileEnd (==' ')
 
 intP :: Parser Integer
 intP = read <$> many1 digit

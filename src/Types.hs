@@ -57,9 +57,9 @@ data Flags = Flags
 
 -- | Command-line arguments
 data Opts = Opts
-  { _expr  :: Bool   -- ^ Pass source as command-line argument
-  , _flags :: Flags  -- ^ Execution flags
-  , _help  :: Bool   -- ^ Only print help and exit
+  { _expr      :: Bool   -- ^ Pass source as command-line argument
+  , _flags     :: Flags  -- ^ Execution flags
+  , _transform :: Bool   -- ^ Transform lambda expression to SKIBCW
   }
 
 -- | By default: clear when evaluating, keep going, be lazy, and keep quiet
